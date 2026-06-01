@@ -1,0 +1,67 @@
+proyecto:
+  nombre: "rag-document-intelligence"
+  version: "1.0.0"
+  corpus: "boe_legal"
+  idioma: "es"
+  descripcion: "Sistema RAG sobre legislación española del BOE"
+
+ingestion:
+  chunk_size: 512
+  chunk_overlap: 64
+  estrategia_chunking: "recursive"  # opciones: fixed, semantic, recursive
+  formatos_soportados:
+    - ".pdf"
+    - ".txt"
+    - ".md"
+  min_chunk_length: 50  # descarta chunks demasiado cortos
+
+embeddings:
+  modelo: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  dispositivo: "cpu"
+  batch_size: 32
+  normalizar: true
+  dimension: 384
+
+vector_store:
+  tipo: "chromadb"
+  directorio_persistencia: "./data/chroma_db"
+  nombre_coleccion: "boe_legal_docs"
+  metrica_distancia: "cosine"
+
+retrieval:
+  top_k: 5
+  hybrid_alpha: 0.7      # 1.0 = solo denso, 0.0 = solo BM25
+  reranking_habilitado: true
+  modelo_reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  rrf_k: 60              # constante para Reciprocal Rank Fusion
+
+generation:
+  modelo: "claude-sonnet-4-6"
+  max_tokens: 2048
+  temperatura: 0.1
+  streaming: true
+  mock_mode: false
+
+evaluation:
+  dataset_path: "./data/evaluation/eval_dataset.json"
+  output_path: "./data/evaluation/results.json"
+  metricas:
+    - fidelidad
+    - relevancia_respuesta
+    - precision_contexto
+    - recall_contexto
+
+api:
+  host: "0.0.0.0"
+  puerto: 8000
+  nivel_log: "info"
+  cors_origins:
+    - "http://localhost:8501"
+    - "http://ui:8501"
+    - "http://localhost:3000"
+
+ui:
+  api_url: "http://localhost:8000"
+  max_historial: 10
+  top_k_defecto: 5
+  hybrid_alpha_defecto: 0.7

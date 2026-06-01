@@ -1,0 +1,52 @@
+TITULO: Reglamento General de Proteccion de Datos — Resumen orientativo
+
+Articulo 1. Objeto.
+El presente reglamento establece las normas relativas a la proteccion de las personas fisicas
+en lo que respecta al tratamiento de datos personales y las normas relativas a la libre
+circulacion de dichos datos. Protege los derechos y libertades fundamentales de las personas
+fisicas, en particular su derecho a la proteccion de datos personales.
+
+Articulo 5. Principios relativos al tratamiento.
+Los datos personales seran tratados de manera licita, leal y transparente en relacion con
+el interesado. Seran recogidos con fines determinados, explicitos y legitimos, y no seran
+tratados de manera incompatible con dichos fines. Seran adecuados, pertinentes y limitados
+a lo necesario en relacion con los fines para los que son tratados.
+
+Articulo 6. Licitud del tratamiento.
+El tratamiento solo sera licito si se cumple al menos una de las siguientes condiciones:
+el interesado dio su consentimiento, el tratamiento es necesario para la ejecucion de un
+contrato, para el cumplimiento de una obligacion legal, para proteger intereses vitales,
+para el cumplimiento de una mision de interes publico, o para la satisfaccion de intereses
+legitimos perseguidos por el responsable del tratamiento.
+
+Articulo 13. Informacion al interesado.
+Cuando se obtengan datos personales de un interesado, el responsable del tratamiento le
+facilitara la identidad y datos de contacto del responsable, los fines del tratamiento,
+los destinatarios de los datos, el plazo de conservacion, y la existencia de derechos de
+acceso, rectificacion, supresion, limitacion, portabilidad y oposicion.
+
+Articulo 17. Derecho de supresion.
+El interesado tendra derecho a obtener del responsable la supresion de los datos personales
+que le conciernan cuando los datos ya no sean necesarios para los fines para los que fueron
+recogidos, cuando retire su consentimiento, cuando se oponga al tratamiento, o cuando los
+datos hayan sido tratados ilicitamente.
+
+Articulo 25. Proteccion de datos desde el diseno y por defecto.
+El responsable del tratamiento aplicara medidas tecnicas y organizativas apropiadas para
+garantizar que solo sean objeto de tratamiento los datos personales necesarios para cada
+uno de los fines especificos del tratamiento. Dicha obligacion se aplicara a la cantidad
+de datos recogidos, la extension de su tratamiento, su plazo de conservacion y su
+accesibilidad.
+
+Articulo 33. Notificacion de violaciones de seguridad.
+En caso de violacion de la seguridad de los datos personales, el responsable la notificara
+a la autoridad de control competente sin dilacion indebida y, de ser posible, a mas tardar
+72 horas despues de que haya tenido constancia de ella. Si la notificacion no tiene lugar
+en el plazo de 72 horas, debera ir acompanada de indicacion de los motivos de la dilacion.
+
+Articulo 37. Designacion del delegado de proteccion de datos.
+El responsable y el encargado del tratamiento designaran un delegado de proteccion de datos
+cuando el tratamiento lo lleve a cabo una autoridad u organismo publico, cuando las
+actividades principales consistan en operaciones de tratamiento que requieran una observacion
+habitual y sistematica de interesados a gran escala, o cuando las actividades principales
+consistan en el tratamiento a gran escala de categorias especiales de datos.

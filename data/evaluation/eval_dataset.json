@@ -1,0 +1,74 @@
+[
+  {
+    "id": "q01",
+    "pregunta": "Cual es el plazo para notificar una violacion de seguridad de datos personales?",
+    "respuesta_esperada": "El responsable debe notificar a la autoridad de control en un maximo de 72 horas desde que tuvo constancia de la violacion.",
+    "documento_fuente": "proteccion_datos.txt"
+  },
+  {
+    "id": "q02",
+    "pregunta": "Que derechos tiene un interesado sobre sus datos personales?",
+    "respuesta_esperada": "El interesado tiene derechos de acceso, rectificacion, supresion, limitacion, portabilidad y oposicion.",
+    "documento_fuente": "proteccion_datos.txt"
+  },
+  {
+    "id": "q03",
+    "pregunta": "Cuando es obligatorio designar un delegado de proteccion de datos?",
+    "respuesta_esperada": "Es obligatorio cuando el tratamiento lo realiza un organismo publico, cuando se requiere observacion sistematica a gran escala, o cuando se tratan categorias especiales de datos a gran escala.",
+    "documento_fuente": "proteccion_datos.txt"
+  },
+  {
+    "id": "q04",
+    "pregunta": "Cual es la duracion maxima de la jornada laboral semanal?",
+    "respuesta_esperada": "La duracion maxima de la jornada ordinaria es de cuarenta horas semanales de trabajo efectivo de promedio en computo anual.",
+    "documento_fuente": "estatuto_trabajadores.txt"
+  },
+  {
+    "id": "q05",
+    "pregunta": "Cual es la duracion maxima del periodo de prueba?",
+    "respuesta_esperada": "Seis meses para tecnicos titulados y dos meses para los demas trabajadores, salvo pacto en convenio.",
+    "documento_fuente": "estatuto_trabajadores.txt"
+  },
+  {
+    "id": "q06",
+    "pregunta": "Que indemnizacion corresponde por despido improcedente?",
+    "respuesta_esperada": "Treinta y tres dias de salario por ano de servicio, con un maximo de veinticuatro mensualidades.",
+    "documento_fuente": "estatuto_trabajadores.txt"
+  },
+  {
+    "id": "q07",
+    "pregunta": "Cual es el plazo de prescripcion de las deudas tributarias?",
+    "respuesta_esperada": "Cuatro anos para la determinacion, exigencia de pago, solicitud de devoluciones y obtencion de devoluciones por ingresos indebidos.",
+    "documento_fuente": "ley_tributaria.txt"
+  },
+  {
+    "id": "q08",
+    "pregunta": "Que principios rigen la ordenacion del sistema tributario espanol?",
+    "respuesta_esperada": "Capacidad economica, justicia, generalidad, igualdad, progresividad, equitativa distribucion de la carga tributaria y no confiscatoriedad.",
+    "documento_fuente": "ley_tributaria.txt"
+  },
+  {
+    "id": "q09",
+    "pregunta": "Quienes son considerados obligados tributarios?",
+    "respuesta_esperada": "Los contribuyentes, sustitutos del contribuyente, obligados a pagos fraccionados, retenedores, obligados a ingresos a cuenta y obligados a repercutir.",
+    "documento_fuente": "ley_tributaria.txt"
+  },
+  {
+    "id": "q10",
+    "pregunta": "Que causas permiten la extincion de un contrato de trabajo?",
+    "respuesta_esperada": "Mutuo acuerdo, causas consignadas en el contrato, expiracion del tiempo, dimision, muerte o incapacidad del trabajador, jubilacion, despido, causas objetivas y decision de victima de violencia de genero.",
+    "documento_fuente": "estatuto_trabajadores.txt"
+  },
+  {
+    "id": "q11",
+    "pregunta": "Que condiciones hacen licito el tratamiento de datos personales?",
+    "respuesta_esperada": "Consentimiento del interesado, ejecucion de contrato, obligacion legal, proteccion de intereses vitales, mision de interes publico o intereses legitimos del responsable.",
+    "documento_fuente": "proteccion_datos.txt"
+  },
+  {
+    "id": "q12",
+    "pregunta": "Que componentes integran la deuda tributaria?",
+    "respuesta_esperada": "La cuota o cantidad a ingresar, el interes de demora, los recargos por declaracion extemporanea, los recargos del periodo ejecutivo y los recargos sobre bases o cuotas.",
+    "documento_fuente": "ley_tributaria.txt"
+  }
+]

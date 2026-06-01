@@ -1,0 +1,52 @@
+# ============================================================
+# RAG Document Intelligence — Dependencias
+# ============================================================
+
+# --- LLM y orquestación ---
+anthropic>=0.40.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-anthropic>=0.3.0
+
+# --- Embeddings y modelos locales ---
+sentence-transformers>=3.3.0
+torch>=2.0.0
+
+# --- Base de datos vectorial ---
+chromadb>=0.6.0
+
+# --- Búsqueda híbrida (BM25) ---
+rank-bm25>=0.2.2
+
+# --- Procesamiento de documentos ---
+pypdf>=5.0.0
+python-multipart>=0.0.12
+
+# --- API ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+
+# --- UI ---
+streamlit>=1.40.0
+plotly>=5.24.0
+pandas>=2.2.0
+
+# --- Configuración ---
+python-dotenv>=1.0.0
+pyyaml>=6.0.2
+
+# --- Logging estructurado ---
+structlog>=24.4.0
+rich>=13.9.0
+
+# --- Testing ---
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+httpx>=0.28.0
+
+# --- Utilidades ---
+numpy>=1.26.0
+tqdm>=4.67.0
+requests>=2.32.0

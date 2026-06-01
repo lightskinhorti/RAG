@@ -1,0 +1,52 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Variables de entorno (NUNCA subir al repo)
+.env
+.env.local
+.env.*.local
+
+# Base de datos vectorial (generada localmente)
+data/chroma_db/
+
+# Resultados de evaluación (se regeneran)
+data/evaluation/results*.json
+
+# Modelos descargados
+models/
+*.bin
+*.safetensors
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/

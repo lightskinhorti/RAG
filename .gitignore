@@ -1,52 +1,70 @@
-# Entorno virtual
-.venv/
-venv/
-env/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
+# ============================================================
+# .gitignore — RAG Document Intelligence
+# ============================================================
 
-# Variables de entorno (NUNCA subir al repo)
+# --- Claves y configuración sensible ---
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
 
-# Base de datos vectorial (generada localmente)
+# --- Datos generados localmente ---
+data/raw/*
+data/processed/*
 data/chroma_db/
+data/embeddings_cache/
+data/evaluation/results.json
+# Mantener los marcadores de directorio vacío
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 
-# Resultados de evaluación (se regeneran)
-data/evaluation/results*.json
-
-# Modelos descargados
+# --- Modelos descargados ---
 models/
 *.bin
+*.pt
 *.safetensors
 
-# IDEs
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Entornos virtuales ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Testing y cobertura ---
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+nosetests.xml
+
+# --- IDEs ---
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# macOS
+*~
 .DS_Store
+Thumbs.db
 
-# Logs
-logs/
-*.log
-
-# Testing
-.pytest_cache/
-htmlcov/
-.coverage
-coverage.xml
-
-# Build
-dist/
-build/
-*.egg-info/
-
-# Jupyter
+# --- Jupyter ---
 .ipynb_checkpoints/
+*.ipynb
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Streamlit ---
+.streamlit/secrets.toml

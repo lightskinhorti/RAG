@@ -2,11 +2,8 @@
 # RAG Document Intelligence — Dependencias
 # ============================================================
 
-# --- LLM y orquestación ---
+# --- LLM ---
 anthropic>=0.40.0
-langchain>=0.3.0
-langchain-community>=0.3.0
-langchain-anthropic>=0.3.0
 
 # --- Embeddings y modelos locales ---
 sentence-transformers>=3.3.0
@@ -36,6 +33,18 @@ pandas>=2.2.0
 # --- Configuración ---
 python-dotenv>=1.0.0
 pyyaml>=6.0.2
+
+# --- Monitoring ---
+prometheus-client>=0.21.0
+
+# --- Cache distribuido (opcional — Redis) ---
+redis>=5.0.0
+
+# --- Vector Store alternativo (opcional — Pinecone) ---
+pinecone>=5.0.0
+
+# --- Agente multi-paso ---
+langgraph>=0.2.0
 
 # --- Logging estructurado ---
 structlog>=24.4.0

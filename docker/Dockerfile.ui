@@ -1,0 +1,40 @@
+# ============================================================
+# Dockerfile para la interfaz Streamlit del sistema RAG
+# ============================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Solo dependencias necesarias para la UI
+RUN pip install --no-cache-dir \
+    streamlit>=1.40.0 \
+    plotly>=5.24.0 \
+    pandas>=2.2.0 \
+    requests>=2.32.0
+
+COPY ui/ ./ui/
+
+# Configuración de Streamlit sin telemetría
+RUN mkdir -p /root/.streamlit && cat > /root/.streamlit/config.toml <<EOF
+[general]
+email = ""
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+EOF
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')" || exit 1
+
+CMD ["streamlit", "run", "ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

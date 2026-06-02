@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Instalar dependencias de test
+        run: |
+          pip install --upgrade pip
+          pip install pytest pyyaml structlog chromadb rank-bm25 numpy pypdf python-dotenv lxml requests
+
+      - name: Ejecutar tests unitarios
+        run: pytest tests/test_ingestion.py tests/test_retrieval.py -v --tb=short
+
+      - name: Verificar imports principales
+        run: |
+          python -c "from src.config import load_config; print('config OK')"
+          python -c "from src.ingestion.pipeline import ingest_directory; print('ingestion OK')"
+          python -c "from src.evaluation.metrics import EvaluadorRAG; print('evaluation OK')"
+          python -c "from src.generation.prompts import construir_prompt_consulta; print('prompts OK')"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar ruff
+        run: pip install ruff
+
+      - name: Comprobar estilo de código
+        run: ruff check src/ tests/ scripts/ --select E,F,I --ignore E501

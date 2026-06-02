@@ -1,0 +1,174 @@
+version: "3.9"
+
+# ============================================================
+# RAG Document Intelligence — Orquestación de servicios
+# Levanta todo con: docker compose up --build
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # Base de datos vectorial (ChromaDB en modo servidor)
+  # ----------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: rag_chromadb
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - rag_network
+
+  # ----------------------------------------------------------
+  # API FastAPI
+  # ----------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: rag_api
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - MOCK_LLM=${MOCK_LLM:-false}
+      - CHROMA_PERSIST_DIR=/app/data/chroma_db
+      - CHROMA_COLLECTION_NAME=${CHROMA_COLLECTION_NAME:-boe_legal_docs}
+      - REDIS_URL=redis://redis:6379/0
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    volumes:
+      - rag_data:/app/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Interfaz Streamlit
+  # ----------------------------------------------------------
+  ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ui
+    container_name: rag_ui
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - API_URL=http://api:8000
+    ports:
+      - "8501:8501"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis — caché semántico distribuido
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: rag_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Prometheus — métricas del sistema
+  # ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rag_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Grafana — dashboards de monitorización
+  # ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rag_grafana
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+# ----------------------------------------------------------
+# Volúmenes persistentes
+# ----------------------------------------------------------
+volumes:
+  chroma_data:
+    driver: local
+  rag_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ----------------------------------------------------------
+# Red interna
+# ----------------------------------------------------------
+networks:
+  rag_network:
+    driver: bridge

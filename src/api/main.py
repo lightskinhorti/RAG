@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
+import uuid
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import router
+from src.api.routes import router, _get_components
 from src.config import get_section
 from src.logger import get_logger, setup_logging
 
@@ -44,17 +47,26 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Middleware de métricas de latencia
+# Middleware: request_id + métricas de latencia
 # ---------------------------------------------------------------------------
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    inicio = time.time()
+async def add_request_context(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    request.state.request_id = request_id
+
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+
+    inicio = time.perf_counter()
     response = await call_next(request)
-    duracion_ms = round((time.time() - inicio) * 1000, 1)
+    duracion_ms = round((time.perf_counter() - inicio) * 1000, 1)
+
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Process-Time-Ms"] = str(duracion_ms)
-    logger.debug(
+
+    logger.info(
         "request_completado",
         metodo=request.method,
         ruta=request.url.path,
@@ -102,11 +114,16 @@ app.include_router(router, prefix="", tags=["RAG"])
 @app.on_event("startup")
 async def startup_event():
     logger.info(
-        "servidor_iniciado",
+        "servidor_iniciando",
         host=cfg_api.get("host", "0.0.0.0"),
         puerto=cfg_api.get("puerto", 8000),
         version="1.0.0",
     )
+    try:
+        await asyncio.to_thread(_get_components)
+        logger.info("modelos_precargados")
+    except Exception as e:
+        logger.warning("warmup_parcial", error=str(e))
 
 
 @app.on_event("shutdown")

@@ -22,7 +22,12 @@ class VectorStore(ABC):
     def add_chunks(self, chunks: list[Chunk], embeddings: np.ndarray) -> None: ...
 
     @abstractmethod
-    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> list[dict]: ...
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 5,
+        where: dict | None = None,
+    ) -> list[dict]: ...
 
     @abstractmethod
     def count(self) -> int: ...
@@ -72,12 +77,28 @@ class ChromaVectorStore(VectorStore):
 
         logger.info("chunks_indexados", total=len(chunks))
 
-    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> list[dict]:
-        results = self._collection.query(
-            query_embeddings=[query_embedding.tolist()],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"],
-        )
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 5,
+        where: dict | None = None,
+    ) -> list[dict]:
+        """Búsqueda por similitud con filtrado opcional por metadata.
+
+        Args:
+            query_embedding: Vector de la consulta.
+            top_k: Número máximo de resultados.
+            where: Filtro de metadata ChromaDB (ej: {"seccion": "I"}).
+        """
+        kwargs = {
+            "query_embeddings": [query_embedding.tolist()],
+            "n_results": top_k,
+            "include": ["documents", "metadatas", "distances"],
+        }
+        if where:
+            kwargs["where"] = where
+
+        results = self._collection.query(**kwargs)
 
         hits = []
         for i in range(len(results["ids"][0])):

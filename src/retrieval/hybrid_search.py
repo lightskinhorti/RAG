@@ -49,9 +49,14 @@ class HybridSearcher:
         ]
         logger.info("bm25_index_construido", num_docs=len(tokenized))
 
-    def search(self, query: str, top_k: int = 5) -> list[dict]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        where: dict | None = None,
+    ) -> list[dict]:
         query_emb = self._embedder.encode([query])[0]
-        dense_results = self._store.search(query_emb, top_k=top_k * 2)
+        dense_results = self._store.search(query_emb, top_k=top_k * 2, where=where)
 
         if self._bm25 is None or self._alpha >= 1.0:
             return dense_results[:top_k]

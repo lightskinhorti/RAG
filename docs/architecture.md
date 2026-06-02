@@ -83,6 +83,39 @@ tiene párrafos densos donde el salto de párrafo es el mejor separador natural.
 **Razón**: Mejor comprensión del lenguaje jurídico en español que GPT-4 en benchmarks
 informales. El modo mock permite desarrollo/demo sin consumir créditos.
 
+### 7. Async + Thread Pool para operaciones CPU-bound
+
+**Razón**: FastAPI usa un event loop asyncio. Las operaciones de embeddings (PyTorch),
+búsqueda en ChromaDB e inferencia del cross-encoder son CPU/IO-bound y bloquean el loop.
+**Implementación**: `asyncio.to_thread()` en todos los endpoints que invocan modelos.
+Esto libera el worker para atender otras requests concurrentes.
+**Trade-off**: Mínimo overhead (~0.1ms por delegación) pero evita starvation bajo carga.
+
+### 8. Caché LRU de Consultas
+
+**Razón**: En demos y uso real, las mismas preguntas se repiten frecuentemente. Computar
+embeddings + búsqueda + generación para cada repetición es innecesario.
+**Implementación**: `OrderedDict` con máximo 128 entradas, hash por (pregunta, top_k, alpha, reranking).
+La caché se invalida automáticamente en cada operación de ingesta.
+**Trade-off**: Memoria negligible (~1MB para 128 respuestas). No apto para ambientes multi-worker
+sin Redis; adecuado para deployment single-worker (caso actual con Docker Compose).
+
+### 9. Metadata Filtering
+
+**Razón**: Para corpus legislativos, filtrar por sección del BOE o departamento ministerial
+es fundamental. Una consulta sobre "regulación laboral" no debería recuperar fragmentos de
+derecho tributario si el usuario especifica el filtro.
+**Implementación**: Parámetro `where` propagado desde el endpoint hasta ChromaDB vía
+`HybridSearcher.search()` → `ChromaVectorStore.search()`.
+
+### 10. Request ID y Observabilidad
+
+**Razón**: En producción, sin un ID único por request no se puede trazar un problema
+a través de los logs del middleware → router → embedder → vector store.
+**Implementación**: Middleware que genera UUID truncado por request y lo inyecta en
+`structlog.contextvars` para que todos los logs del mismo request compartan el mismo ID.
+Se expone vía header `X-Request-ID` en la respuesta.
+
 ## Estructura de Metadatos por Chunk
 
 ```python
@@ -113,9 +146,18 @@ El framework de evaluación implementa 4 métricas sin dependencia de LLM extern
 
 Para producción se recomienda sustituir por métricas basadas en LLM judge (RAGAS).
 
+## CI/CD
+
+GitHub Actions ejecuta en cada push:
+1. **Tests unitarios**: `pytest tests/test_ingestion.py tests/test_retrieval.py`
+2. **Verificación de imports**: Todos los módulos core importan sin error
+3. **Lint**: `ruff check` sobre src/, tests/ y scripts/
+
 ## Seguridad y Consideraciones
 
 - Las claves API nunca se hardcodean; siempre desde variables de entorno.
 - El `.gitignore` excluye `data/raw/` y `data/chroma_db/` (pueden contener PII en corpus privados).
 - La API incluye CORS configurado explícitamente para evitar orígenes no autorizados.
 - Los errores se loguean con structlog en formato estructurado, sin exponer stacktraces al cliente.
+- Cada request lleva un `X-Request-ID` único para trazabilidad end-to-end.
+- La caché de consultas se invalida automáticamente al ingestar nuevos documentos.

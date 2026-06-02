@@ -73,5 +73,180 @@
     "id": "q15",
     "pregunta": "¿Cuáles son los plazos para presentar recursos administrativos en España?",
     "respuesta_esperada": "El recurso de alzada debe interponerse en el plazo de un mes si el acto es expreso. El recurso de reposición debe interponerse en el plazo de un mes si el acto es expreso. Si los actos no son expresos, el plazo para recurrir es de tres meses para el recurso de alzada y un mes para el de reposición."
+  },
+  {
+    "id": "q16",
+    "pregunta": "¿Cuánto tiempo tiene un trabajador para impugnar un despido ante la jurisdicción social?",
+    "respuesta_esperada": "El trabajador dispone de un plazo de caducidad de veinte días hábiles para ejercitar la acción contra el despido, contados a partir del día siguiente a la fecha en que se hubiera producido el despido."
+  },
+  {
+    "id": "q17",
+    "pregunta": "¿Qué duración máxima puede tener el período de prueba en un contrato de trabajo?",
+    "respuesta_esperada": "La duración máxima del período de prueba es la fijada en convenio colectivo. En defecto de pacto en convenio, no podrá exceder de seis meses para los técnicos titulados ni de dos meses para los demás trabajadores. En empresas de menos de veinticinco trabajadores, el período de prueba no podrá exceder de tres meses para los trabajadores que no sean técnicos titulados."
+  },
+  {
+    "id": "q18",
+    "pregunta": "¿Cuántas horas extraordinarias puede realizar un trabajador al año como máximo?",
+    "respuesta_esperada": "El número de horas extraordinarias no podrá ser superior a ochenta al año. No se computarán a estos efectos las horas extraordinarias que hayan sido compensadas mediante descanso dentro de los cuatro meses siguientes a su realización."
+  },
+  {
+    "id": "q19",
+    "pregunta": "¿Qué preaviso debe dar un trabajador que quiere dimitir de su puesto de trabajo?",
+    "respuesta_esperada": "El trabajador que dimite debe preavisar en el plazo que señalen los convenios colectivos o la costumbre del lugar. El Estatuto de los Trabajadores no fija un plazo concreto de preaviso para la dimisión, remitiéndose a lo establecido en convenio colectivo, siendo habitual un preaviso de quince días."
+  },
+  {
+    "id": "q20",
+    "pregunta": "¿Cuál es la indemnización por despido objetivo procedente en España?",
+    "respuesta_esperada": "La indemnización por despido objetivo procedente es de veinte días de salario por año de servicio, prorrateándose por meses los períodos de tiempo inferiores a un año, con un máximo de doce mensualidades."
+  },
+  {
+    "id": "q21",
+    "pregunta": "¿Qué descanso mínimo debe tener un trabajador entre jornadas?",
+    "respuesta_esperada": "Entre el final de una jornada y el comienzo de la siguiente mediarán, como mínimo, doce horas de descanso. Además, los trabajadores tienen derecho a un descanso semanal mínimo de día y medio ininterrumpido, que como regla general comprenderá la tarde del sábado o, en su caso, la mañana del lunes, y el día completo del domingo."
+  },
+  {
+    "id": "q22",
+    "pregunta": "¿A partir de qué edad se puede trabajar legalmente en España?",
+    "respuesta_esperada": "Se prohíbe la admisión al trabajo a los menores de dieciséis años. Los trabajadores menores de dieciocho años no podrán realizar trabajos nocturnos ni aquellas actividades que el Gobierno declare insalubres, penosas, nocivas o peligrosas."
+  },
+  {
+    "id": "q23",
+    "pregunta": "¿Cuál es la cuantía máxima de las sanciones por infracciones muy graves en materia de protección de datos?",
+    "respuesta_esperada": "Las infracciones muy graves en materia de protección de datos pueden ser sancionadas con multas administrativas de hasta 20 millones de euros o, tratándose de una empresa, de una cuantía equivalente al 4 % del volumen de negocio total anual global del ejercicio financiero anterior, optándose por la de mayor cuantía."
+  },
+  {
+    "id": "q24",
+    "pregunta": "¿Qué es el derecho al olvido en protección de datos?",
+    "respuesta_esperada": "El derecho al olvido, también llamado derecho de supresión, permite al interesado obtener del responsable del tratamiento la supresión de sus datos personales sin dilación indebida cuando, entre otros motivos, los datos ya no sean necesarios para los fines para los que fueron recogidos, se retire el consentimiento o los datos hayan sido tratados ilícitamente."
+  },
+  {
+    "id": "q25",
+    "pregunta": "¿A qué edad pueden los menores prestar consentimiento para el tratamiento de sus datos personales en España?",
+    "respuesta_esperada": "En España, conforme a la LOPDGDD, el tratamiento de datos personales de un menor de edad solo puede fundarse en su consentimiento cuando sea mayor de catorce años. Para menores de catorce años se requiere el consentimiento del titular de la patria potestad o tutela."
+  },
+  {
+    "id": "q26",
+    "pregunta": "¿Qué es una evaluación de impacto en protección de datos y cuándo es obligatoria?",
+    "respuesta_esperada": "La evaluación de impacto relativa a la protección de datos es un análisis previo de las operaciones de tratamiento que probablemente entrañen un alto riesgo para los derechos y libertades de las personas físicas. Es obligatoria cuando se realice una evaluación sistemática y exhaustiva de aspectos personales basada en un tratamiento automatizado, incluida la elaboración de perfiles, cuando se traten a gran escala categorías especiales de datos, o cuando se observe sistemáticamente una zona de acceso público a gran escala."
+  },
+  {
+    "id": "q27",
+    "pregunta": "¿Qué obligaciones tiene un encargado del tratamiento de datos personales?",
+    "respuesta_esperada": "El encargado del tratamiento debe tratar los datos personales únicamente siguiendo instrucciones documentadas del responsable, garantizar que las personas autorizadas se hayan comprometido a respetar la confidencialidad, adoptar las medidas de seguridad adecuadas, asistir al responsable en el cumplimiento de sus obligaciones, y suprimir o devolver los datos una vez finalice la prestación del servicio."
+  },
+  {
+    "id": "q28",
+    "pregunta": "¿En qué consiste el derecho a la portabilidad de los datos?",
+    "respuesta_esperada": "El derecho a la portabilidad permite al interesado recibir los datos personales que le incumban y que haya facilitado a un responsable del tratamiento, en un formato estructurado, de uso común y lectura mecánica, y transmitirlos a otro responsable del tratamiento sin que lo impida el responsable al que se los hubiera facilitado."
+  },
+  {
+    "id": "q29",
+    "pregunta": "¿Cuáles son las infracciones muy graves en protección de datos según la LOPDGDD?",
+    "respuesta_esperada": "Son infracciones muy graves, entre otras, el tratamiento de datos personales vulnerando los principios y garantías del artículo 5 del RGPD, el tratamiento sin que concurra ninguna base de legitimación, la transferencia internacional de datos sin garantías adecuadas, y el incumplimiento de las resoluciones dictadas por la Agencia Española de Protección de Datos."
+  },
+  {
+    "id": "q30",
+    "pregunta": "¿Qué son los obligados tributarios y qué tipos existen?",
+    "respuesta_esperada": "Los obligados tributarios son las personas físicas o jurídicas y las entidades a las que la normativa tributaria impone el cumplimiento de obligaciones tributarias. Son obligados tributarios, entre otros, los contribuyentes, los sustitutos del contribuyente, los obligados a realizar pagos fraccionados, los retenedores, los obligados a practicar ingresos a cuenta y los sucesores."
+  },
+  {
+    "id": "q31",
+    "pregunta": "¿Qué facultades tiene la Inspección de los Tributos?",
+    "respuesta_esperada": "La Inspección de los Tributos tiene facultades para examinar documentos, libros y registros relativos a actividades económicas, entrar en fincas, locales de negocio y demás establecimientos, requerir a terceros la aportación de información, y adoptar medidas cautelares. Los obligados tributarios deben atender a la Inspección y prestarle la debida colaboración."
+  },
+  {
+    "id": "q32",
+    "pregunta": "¿Qué es el aplazamiento y fraccionamiento de la deuda tributaria?",
+    "respuesta_esperada": "Las deudas tributarias que se encuentren en período voluntario o ejecutivo podrán aplazarse o fraccionarse previa solicitud del obligado tributario, cuando su situación económico-financiera le impida de forma transitoria efectuar el pago en los plazos establecidos. No podrán aplazarse las deudas cuyo aplazamiento esté expresamente prohibido por ley."
+  },
+  {
+    "id": "q33",
+    "pregunta": "¿Cuáles son los recargos por declaración extemporánea sin requerimiento previo?",
+    "respuesta_esperada": "Si la presentación se efectúa dentro de los doce meses siguientes al término del plazo establecido, el recargo será un porcentaje igual al 1 por ciento más otro 1 por ciento adicional por cada mes completo de retraso. Si la presentación se efectúa una vez transcurridos los doce meses, el recargo será del 15 por ciento y se exigirán intereses de demora."
+  },
+  {
+    "id": "q34",
+    "pregunta": "¿Qué recursos puede interponer un contribuyente contra una liquidación tributaria?",
+    "respuesta_esperada": "Contra las liquidaciones tributarias, el contribuyente puede interponer recurso de reposición ante el órgano que dictó el acto, o reclamación económico-administrativa ante el Tribunal Económico-Administrativo competente. Ambas vías son alternativas y no simultáneas. Posteriormente cabe recurso contencioso-administrativo ante la jurisdicción ordinaria."
+  },
+  {
+    "id": "q35",
+    "pregunta": "¿Qué son las consultas tributarias vinculantes y quién puede formularlas?",
+    "respuesta_esperada": "Los obligados tributarios pueden formular consultas escritas a la Administración tributaria sobre el régimen, clasificación o calificación tributaria que corresponda a un caso concreto. La contestación a las consultas tributarias escritas tendrá efectos vinculantes para los órganos y entidades de la Administración tributaria encargados de la aplicación de los tributos."
+  },
+  {
+    "id": "q36",
+    "pregunta": "¿Qué es el silencio administrativo y cuándo se considera positivo o negativo?",
+    "respuesta_esperada": "El silencio administrativo es la falta de resolución expresa por parte de la Administración dentro del plazo legalmente establecido. Con carácter general, en los procedimientos iniciados a solicitud del interesado, el silencio tiene efecto estimatorio (positivo). Sin embargo, el silencio será desestimatorio (negativo) cuando una norma con rango de ley o de Derecho de la Unión Europea así lo establezca, o cuando la solicitud implique transferencia de facultades sobre el dominio público."
+  },
+  {
+    "id": "q37",
+    "pregunta": "¿Cuál es el plazo máximo para resolver y notificar un procedimiento administrativo?",
+    "respuesta_esperada": "El plazo máximo para resolver y notificar la resolución de un procedimiento administrativo es el fijado por la norma reguladora del correspondiente procedimiento. Cuando las normas no fijen plazo máximo, este será de tres meses, conforme al artículo 21 de la Ley 39/2015."
+  },
+  {
+    "id": "q38",
+    "pregunta": "¿Quiénes tienen capacidad de obrar ante las Administraciones Públicas según la Ley 39/2015?",
+    "respuesta_esperada": "Tienen capacidad de obrar ante las Administraciones Públicas, además de las personas que la ostenten con arreglo a las normas civiles, los menores de edad para el ejercicio y defensa de aquellos de sus derechos e intereses cuya actuación esté permitida sin asistencia de quien ejerza la patria potestad o tutela, así como los grupos de afectados, uniones y entidades sin personalidad jurídica, y los patrimonios independientes cuando la ley así lo declare."
+  },
+  {
+    "id": "q39",
+    "pregunta": "¿Qué es el recurso extraordinario de revisión en vía administrativa?",
+    "respuesta_esperada": "El recurso extraordinario de revisión puede interponerse contra actos firmes en vía administrativa cuando al dictarlos se hubiera incurrido en error de hecho, cuando aparezcan documentos esenciales posteriores, cuando en la resolución hayan influido documentos o testimonios declarados falsos por sentencia judicial firme, o cuando la resolución se hubiere dictado como consecuencia de prevaricación, cohecho, violencia u otra conducta punible declarada por sentencia firme."
+  },
+  {
+    "id": "q40",
+    "pregunta": "¿Qué obligación tienen las Administraciones Públicas respecto a la tramitación electrónica?",
+    "respuesta_esperada": "La Ley 39/2015 establece que las Administraciones Públicas deben tramitar los procedimientos administrativos de forma electrónica. Los ciudadanos tienen derecho a relacionarse electrónicamente con las Administraciones, y determinados sujetos, como las personas jurídicas, están obligados a relacionarse electrónicamente con la Administración."
+  },
+  {
+    "id": "q41",
+    "pregunta": "¿Qué es la nulidad de pleno derecho de un acto administrativo y en qué casos se produce?",
+    "respuesta_esperada": "Son nulos de pleno derecho los actos administrativos que lesionen los derechos y libertades susceptibles de amparo constitucional, los dictados por órgano manifiestamente incompetente por razón de la materia o del territorio, los que tengan un contenido imposible, los constitutivos de infracción penal, los dictados prescindiendo total y absolutamente del procedimiento establecido, y los contrarios al ordenamiento jurídico que adquieran facultades o derechos cuando se carezca de los requisitos esenciales para su adquisición."
+  },
+  {
+    "id": "q42",
+    "pregunta": "¿Qué es la notificación administrativa y qué requisitos debe cumplir?",
+    "respuesta_esperada": "La notificación es el acto por el que la Administración comunica al interesado una resolución o acto administrativo. Debe contener el texto íntegro de la resolución, indicar si es o no definitivo en vía administrativa, los recursos que procedan, el órgano ante el que deben presentarse y el plazo para interponerlos. Las notificaciones se practicarán preferentemente por medios electrónicos."
+  },
+  {
+    "id": "q43",
+    "pregunta": "¿Cuáles son los derechos de los interesados en un procedimiento administrativo?",
+    "respuesta_esperada": "Los interesados tienen derecho a conocer el estado de tramitación del procedimiento, a identificar a las autoridades y personal responsable, a obtener copia de los documentos, a formular alegaciones en cualquier momento anterior al trámite de audiencia, a no presentar documentos que ya obren en poder de la Administración, y a obtener información sobre los requisitos jurídicos o técnicos de las actuaciones."
+  },
+  {
+    "id": "q44",
+    "pregunta": "¿Qué plazo tiene la Administración para resolver un recurso de alzada?",
+    "respuesta_esperada": "El plazo máximo para dictar y notificar la resolución de un recurso de alzada es de tres meses. Transcurrido dicho plazo sin que recaiga resolución, se podrá entender desestimado el recurso, salvo en el supuesto de que el recurso se haya interpuesto contra la desestimación por silencio administrativo de una solicitud, en cuyo caso el silencio tendrá efecto estimatorio."
+  },
+  {
+    "id": "q45",
+    "pregunta": "¿Qué tipos de iniciativa legislativa popular existen en España y qué requisitos tienen?",
+    "respuesta_esperada": "La Constitución Española reconoce la iniciativa legislativa popular, que requiere no menos de 500.000 firmas acreditadas para presentar proposiciones de ley ante el Congreso. No procederá dicha iniciativa en materias propias de ley orgánica, tributarias, de carácter internacional ni en lo relativo a la prerrogativa de gracia."
+  },
+  {
+    "id": "q46",
+    "pregunta": "¿Cuál es el capital social mínimo para constituir una Sociedad de Responsabilidad Limitada en España?",
+    "respuesta_esperada": "El capital social de la Sociedad de Responsabilidad Limitada no podrá ser inferior a tres mil euros y deberá estar íntegramente desembolsado en el momento de la constitución. No obstante, la Ley de Sociedades de Capital permite la constitución de sociedades limitadas con un capital inferior a tres mil euros bajo el régimen de formación sucesiva."
+  },
+  {
+    "id": "q47",
+    "pregunta": "¿Cuál es el capital social mínimo para constituir una Sociedad Anónima en España?",
+    "respuesta_esperada": "El capital social de la Sociedad Anónima no podrá ser inferior a sesenta mil euros. En el momento de la constitución deberá estar suscrito en su totalidad y desembolsado en una cuarta parte, al menos, el valor nominal de cada una de las acciones."
+  },
+  {
+    "id": "q48",
+    "pregunta": "¿Qué competencias exclusivas tienen las Comunidades Autónomas según la Constitución Española?",
+    "respuesta_esperada": "Las Comunidades Autónomas pueden asumir competencias en materias como la organización de sus instituciones de autogobierno, la ordenación del territorio y urbanismo, la agricultura y ganadería, los montes y aprovechamientos forestales, la gestión en materia de protección del medio ambiente, el fomento del desarrollo económico, y la promoción de la cultura y la investigación, entre otras recogidas en el artículo 148 de la Constitución."
+  },
+  {
+    "id": "q49",
+    "pregunta": "¿Qué es la responsabilidad de los administradores de una sociedad mercantil?",
+    "respuesta_esperada": "Los administradores de una sociedad mercantil deben desempeñar su cargo con la diligencia de un ordenado empresario y de un representante leal. Responderán frente a la sociedad, frente a los socios y frente a los acreedores sociales del daño que causen por actos u omisiones contrarios a la ley o a los estatutos, o por los realizados incumpliendo los deberes inherentes al desempeño del cargo, siempre que haya intervenido dolo o culpa."
+  },
+  {
+    "id": "q50",
+    "pregunta": "¿Qué mayorías se necesitan para reformar la Constitución Española?",
+    "respuesta_esperada": "La reforma constitucional ordinaria requiere la aprobación por mayoría de tres quintos de cada Cámara. Si no hay acuerdo, se intenta por una comisión paritaria Congreso-Senado, y si tampoco se logra, el Congreso puede aprobarla por mayoría de dos tercios siempre que el Senado la haya aprobado por mayoría absoluta. La reforma agravada, que afecta al Título Preliminar, derechos fundamentales o la Corona, requiere aprobación por dos tercios de cada Cámara, disolución de las Cortes, ratificación por las nuevas Cámaras por dos tercios y referéndum."
   }
 ]

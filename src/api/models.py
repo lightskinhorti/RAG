@@ -23,6 +23,14 @@ class QueryRequest(BaseModel):
     )
     reranking: bool = Field(default=True, description="Activar reranking con cross-encoder")
     streaming: bool = Field(default=False, description="Activar respuesta en streaming")
+    filtro_seccion: str | None = Field(
+        default=None,
+        description="Filtrar por sección del BOE (ej: 'I. Disposiciones generales')",
+    )
+    filtro_departamento: str | None = Field(
+        default=None,
+        description="Filtrar por departamento (ej: 'Ministerio de Trabajo')",
+    )
 
     model_config = {"json_schema_extra": {
         "example": {
@@ -31,6 +39,8 @@ class QueryRequest(BaseModel):
             "alpha": 0.7,
             "reranking": True,
             "streaming": False,
+            "filtro_seccion": None,
+            "filtro_departamento": None,
         }
     }}
 

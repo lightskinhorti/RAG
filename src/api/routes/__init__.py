@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import time
+from collections import OrderedDict
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
@@ -30,6 +33,32 @@ from src.retrieval.vector_store import get_vector_store
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Caché LRU de consultas recientes
+# ---------------------------------------------------------------------------
+
+_CACHE_MAX_SIZE = 128
+_query_cache: OrderedDict[str, dict] = OrderedDict()
+
+
+def _cache_key(pregunta: str, top_k: int, alpha: float, reranking: bool) -> str:
+    raw = f"{pregunta.strip().lower()}|{top_k}|{alpha:.2f}|{reranking}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _cache_get(key: str) -> dict | None:
+    if key in _query_cache:
+        _query_cache.move_to_end(key)
+        return _query_cache[key]
+    return None
+
+
+def _cache_put(key: str, value: dict) -> None:
+    _query_cache[key] = value
+    if len(_query_cache) > _CACHE_MAX_SIZE:
+        _query_cache.popitem(last=False)
+
 
 # ---------------------------------------------------------------------------
 # Inicialización lazy de componentes pesados
@@ -65,6 +94,22 @@ def _get_components():
     return _embedder, _vector_store, _searcher, _generador, _reranker
 
 
+def _build_fuentes(resultados: list[dict]) -> list[FuenteDocumento]:
+    fuentes = []
+    for r in resultados:
+        meta = r.get("metadata", {})
+        fuentes.append(FuenteDocumento(
+            titulo=str(meta.get("titulo", meta.get("fuente", "Documento BOE")))[:200],
+            fecha=str(meta.get("fecha", meta.get("fecha_publicacion", "—"))),
+            seccion=str(meta.get("seccion", "—")),
+            departamento=str(meta.get("departamento", "—")),
+            texto_fragmento=r.get("texto", "")[:500],
+            score=float(r.get("rrf_score", r.get("score", 0.0))),
+            tipo_busqueda=str(meta.get("estrategia", "hybrid")),
+        ))
+    return fuentes
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -77,8 +122,17 @@ async def query(request: QueryRequest):
     - Recupera los fragmentos más relevantes del vector store
     - Opcionalmente aplica reranking con cross-encoder
     - Genera respuesta con el LLM citando las fuentes
+    - Usa caché LRU para consultas repetidas
     """
-    inicio = time.time()
+    inicio = time.perf_counter()
+
+    # Comprobar caché
+    ckey = _cache_key(request.pregunta, request.top_k, request.alpha, request.reranking)
+    cached = _cache_get(ckey)
+    if cached:
+        latencia = (time.perf_counter() - inicio) * 1000
+        logger.info("query_cache_hit", latencia_ms=round(latencia, 1))
+        return QueryResponse(**{**cached, "latencia_ms": round(latencia, 1)})
 
     try:
         embedder, vector_store, searcher, generador, reranker = _get_components()
@@ -92,44 +146,54 @@ async def query(request: QueryRequest):
             detail="No hay documentos indexados. Ejecuta la ingesta primero.",
         )
 
-    # Búsqueda híbrida
+    # Construir filtro de metadata si se proporcionaron parámetros
+    where_filter = None
+    conditions = {}
+    if request.filtro_seccion:
+        conditions["seccion"] = request.filtro_seccion
+    if request.filtro_departamento:
+        conditions["departamento"] = request.filtro_departamento
+    if conditions:
+        where_filter = conditions if len(conditions) == 1 else {"$and": [
+            {k: v} for k, v in conditions.items()
+        ]}
+
+    # Búsqueda híbrida — operaciones CPU-bound delegadas al thread pool
     searcher._alpha = request.alpha
-    resultados = searcher.search(request.pregunta, top_k=request.top_k)
+    resultados = await asyncio.to_thread(
+        searcher.search, request.pregunta, request.top_k, where_filter
+    )
 
     # Reranking opcional
     if request.reranking and reranker and resultados:
         try:
-            resultados = reranker.rerank(request.pregunta, resultados, top_k=request.top_k)
+            resultados = await asyncio.to_thread(
+                reranker.rerank, request.pregunta, resultados, request.top_k
+            )
         except Exception as e:
             logger.warning("reranking_fallido", error=str(e))
 
-    # Generación
-    respuesta_data = generador.generar(request.pregunta, resultados)
-
-    # Construir fuentes para la respuesta
-    fuentes = []
-    for r in resultados:
-        meta = r.get("metadata", {})
-        fuentes.append(FuenteDocumento(
-            titulo=str(meta.get("titulo", meta.get("fuente", "Documento BOE")))[:200],
-            fecha=str(meta.get("fecha", meta.get("fecha_publicacion", "—"))),
-            seccion=str(meta.get("seccion", "—")),
-            departamento=str(meta.get("departamento", "—")),
-            texto_fragmento=r.get("texto", "")[:500],
-            score=float(r.get("rrf_score", r.get("score", 0.0))),
-            tipo_busqueda=str(meta.get("estrategia", "hybrid")),
-        ))
-
-    latencia_total = (time.time() - inicio) * 1000
-
-    return QueryResponse(
-        pregunta=request.pregunta,
-        respuesta=respuesta_data["respuesta"],
-        fuentes=fuentes,
-        num_fuentes=len(fuentes),
-        latencia_ms=round(latencia_total, 1),
-        modo_mock=respuesta_data["modo_mock"],
+    # Generación — CPU/IO-bound
+    respuesta_data = await asyncio.to_thread(
+        generador.generar, request.pregunta, resultados
     )
+
+    fuentes = _build_fuentes(resultados)
+    latencia_total = (time.perf_counter() - inicio) * 1000
+
+    response_dict = {
+        "pregunta": request.pregunta,
+        "respuesta": respuesta_data["respuesta"],
+        "fuentes": fuentes,
+        "num_fuentes": len(fuentes),
+        "latencia_ms": round(latencia_total, 1),
+        "modo_mock": respuesta_data["modo_mock"],
+    }
+
+    # Guardar en caché
+    _cache_put(ckey, response_dict)
+
+    return QueryResponse(**response_dict)
 
 
 @router.post(
@@ -148,11 +212,15 @@ async def query_stream(request: QueryRequest):
         raise HTTPException(status_code=404, detail="No hay documentos indexados.")
 
     searcher._alpha = request.alpha
-    resultados = searcher.search(request.pregunta, top_k=request.top_k)
+    resultados = await asyncio.to_thread(
+        searcher.search, request.pregunta, request.top_k
+    )
 
     if request.reranking and reranker and resultados:
         try:
-            resultados = reranker.rerank(request.pregunta, resultados, top_k=request.top_k)
+            resultados = await asyncio.to_thread(
+                reranker.rerank, request.pregunta, resultados, request.top_k
+            )
         except Exception as e:
             logger.warning("reranking_stream_fallido", error=str(e))
 
@@ -167,7 +235,7 @@ async def query_stream(request: QueryRequest):
 @router.post("/ingest", response_model=IngestResponse, summary="Ingesta de documentos")
 async def ingest(request: IngestRequest):
     """Procesa e indexa documentos desde un directorio local."""
-    inicio = time.time()
+    inicio = time.perf_counter()
     directorio = Path(request.directorio)
 
     if not directorio.exists():
@@ -192,7 +260,7 @@ async def ingest(request: IngestRequest):
         "min_chunk_length": 50,
     }
 
-    chunks = ingest_directory(directorio, config=config_override)
+    chunks = await asyncio.to_thread(ingest_directory, directorio, config_override)
     if not chunks:
         raise HTTPException(
             status_code=422,
@@ -200,14 +268,15 @@ async def ingest(request: IngestRequest):
         )
 
     textos = [c.texto for c in chunks]
-    embeddings = embedder.encode(textos)
+    embeddings = await asyncio.to_thread(embedder.encode, textos)
     vector_store.add_chunks(chunks, embeddings)
 
-    # Reconstruir índice BM25 con nuevos documentos
+    # Invalidar caché y forzar reconstrucción del índice BM25
     global _searcher
-    _searcher = None  # Forzar reconstrucción en la próxima consulta
+    _searcher = None
+    _query_cache.clear()
 
-    duracion = time.time() - inicio
+    duracion = time.perf_counter() - inicio
     total_docs = len({c.metadata.get("fuente", "") for c in chunks})
 
     return IngestResponse(
@@ -241,7 +310,7 @@ async def ingest_upload(
             detail=f"Formato no soportado: {sufijo}. Permitidos: {formatos_permitidos}",
         )
 
-    inicio = time.time()
+    inicio = time.perf_counter()
     tmp_path = Path("data/raw") / (archivo.filename or "upload_tmp")
     tmp_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -260,11 +329,12 @@ async def ingest_upload(
         if not chunks:
             raise HTTPException(status_code=422, detail="El documento no generó ningún chunk válido.")
 
-        embeddings = embedder.encode([c.texto for c in chunks])
+        embeddings = await asyncio.to_thread(embedder.encode, [c.texto for c in chunks])
         vector_store.add_chunks(chunks, embeddings)
 
         global _searcher
         _searcher = None
+        _query_cache.clear()
 
     except HTTPException:
         raise
@@ -278,7 +348,7 @@ async def ingest_upload(
         chunks_por_documento=float(len(chunks)),
         estrategia_usada=estrategia,
         directorio=str(tmp_path),
-        duracion_segundos=round(time.time() - inicio, 2),
+        duracion_segundos=round(time.perf_counter() - inicio, 2),
     )
 
 
@@ -337,6 +407,6 @@ async def run_evaluation():
         return {"respuesta": gen["respuesta"], "contexto": resultados}
 
     evaluador = EvaluadorRAG(rag_pipeline=pipeline)
-    informe = evaluador.evaluar_dataset()
+    informe = await asyncio.to_thread(evaluador.evaluar_dataset)
 
     return informe.to_dict()

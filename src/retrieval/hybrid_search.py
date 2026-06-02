@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
 from rank_bm25 import BM25Okapi
 
 from src.config import get_section

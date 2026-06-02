@@ -8,17 +8,16 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from src.api.models import (
-    ErrorResponse,
+    FuenteDocumento,
     HealthResponse,
     IngestRequest,
     IngestResponse,
     QueryRequest,
     QueryResponse,
-    FuenteDocumento,
     StatsResponse,
 )
 from src.config import get_section

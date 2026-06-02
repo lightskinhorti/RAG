@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Tests: SentenceTransformerEmbedder
 # ---------------------------------------------------------------------------
@@ -16,8 +15,12 @@ def embedder():
     """Fixture del embedder (carga el modelo una vez por módulo)."""
     from src.embeddings.embedder import SentenceTransformerEmbedder
 
-    # Usamos el modelo más ligero para los tests
-    return SentenceTransformerEmbedder(model_name="all-MiniLM-L6-v2")
+    emb = SentenceTransformerEmbedder(model_name="all-MiniLM-L6-v2")
+    try:
+        emb.encode(["warmup"])
+    except OSError:
+        pytest.skip("Modelo de embeddings no disponible (sin acceso a HuggingFace)")
+    return emb
 
 
 def test_encode_devuelve_ndarray(embedder):

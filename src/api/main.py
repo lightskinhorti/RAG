@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import router, _get_components
+from src.api.routes import _get_components, router
 from src.config import get_section
 from src.logger import get_logger, setup_logging
 

@@ -97,7 +97,7 @@ def main():
         sys.exit(1)
 
     dias_total = (fecha_fin - fecha_inicio).days + 1
-    print(f"\n📋 Configuración de descarga:")
+    print("\n📋 Configuración de descarga:")
     print(f"   Rango: {fecha_inicio} → {fecha_fin} ({dias_total} días)")
     print(f"   Máx. docs/día: {args.max_por_dia}")
     print(f"   Directorio: {args.directorio}")
@@ -112,10 +112,10 @@ def main():
         delay_between_requests=args.delay,
     )
 
-    print(f"🔄 Descargando documentos del BOE...")
+    print("🔄 Descargando documentos del BOE...")
     docs = downloader.descargar_rango(fecha_inicio, fecha_fin)
 
-    print(f"\n✅ Descarga completada:")
+    print("\n✅ Descarga completada:")
     print(f"   Total documentos: {len(docs)}")
     if docs:
         print(f"   Longitud media: {sum(len(d.texto) for d in docs) // len(docs):,} caracteres")

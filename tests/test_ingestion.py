@@ -9,7 +9,6 @@ import pytest
 from src.ingestion.chunker import Chunk, chunk_document
 from src.ingestion.loader import Document, load_document
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

@@ -10,7 +10,6 @@ import chromadb
 import numpy as np
 
 from src.config import get_section
-from src.embeddings.embedder import Embedder, get_embedder
 from src.ingestion.chunker import Chunk
 from src.logger import get_logger
 

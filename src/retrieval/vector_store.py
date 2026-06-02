@@ -34,6 +34,9 @@ class VectorStore(ABC):
     @abstractmethod
     def reset(self) -> None: ...
 
+    @abstractmethod
+    def get_stats(self) -> dict: ...
+
 
 class ChromaVectorStore(VectorStore):
     def __init__(
@@ -129,5 +132,13 @@ class ChromaVectorStore(VectorStore):
         }
 
 
-def get_vector_store() -> ChromaVectorStore:
+def get_vector_store() -> VectorStore:
+    cfg = get_section("vector_store")
+    tipo = cfg.get("tipo", "chromadb")
+
+    if tipo == "pinecone":
+        from src.retrieval.pinecone_store import PineconeVectorStore
+
+        return PineconeVectorStore()
+
     return ChromaVectorStore()

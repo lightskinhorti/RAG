@@ -34,6 +34,18 @@ pandas>=2.2.0
 python-dotenv>=1.0.0
 pyyaml>=6.0.2
 
+# --- Monitoring ---
+prometheus-client>=0.21.0
+
+# --- Cache distribuido (opcional — Redis) ---
+redis>=5.0.0
+
+# --- Vector Store alternativo (opcional — Pinecone) ---
+pinecone>=5.0.0
+
+# --- Agente multi-paso ---
+langgraph>=0.2.0
+
 # --- Logging estructurado ---
 structlog>=24.4.0
 rich>=13.9.0

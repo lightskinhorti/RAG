@@ -23,10 +23,13 @@ embeddings:
   dimension: 384
 
 vector_store:
-  tipo: "chromadb"
+  tipo: "chromadb"              # opciones: chromadb, pinecone
   directorio_persistencia: "./data/chroma_db"
   nombre_coleccion: "boe_legal_docs"
   metrica_distancia: "cosine"
+  pinecone:
+    index_name: "boe-legal-docs"
+    namespace: "default"
 
 retrieval:
   top_k: 5
@@ -45,6 +48,7 @@ generation:
 evaluation:
   dataset_path: "./data/evaluation/eval_dataset.json"
   output_path: "./data/evaluation/results.json"
+  use_llm_judge: false   # true = métricas LLM judge estilo RAGAS (requiere API key)
   metricas:
     - fidelidad
     - relevancia_respuesta
@@ -65,6 +69,18 @@ ui:
   max_historial: 10
   top_k_defecto: 5
   hybrid_alpha_defecto: 0.7
+
+cache:
+  redis_url: ""          # vacío = in-memory. Ej: redis://localhost:6379/0
+  ttl: 3600
+  max_entries: 128
+  similarity_threshold: 0.95
+
+agent:
+  max_sub_queries: 3
+  top_k_per_query: 5
+  reranking: true
+  alpha: 0.7
 
 boe:
   directorio_raw: "data/raw"

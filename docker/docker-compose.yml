@@ -40,11 +40,14 @@ services:
     depends_on:
       chromadb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - MOCK_LLM=${MOCK_LLM:-false}
       - CHROMA_PERSIST_DIR=/app/data/chroma_db
       - CHROMA_COLLECTION_NAME=${CHROMA_COLLECTION_NAME:-boe_legal_docs}
+      - REDIS_URL=redis://redis:6379/0
       - API_HOST=0.0.0.0
       - API_PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-info}
@@ -90,6 +93,66 @@ services:
       - rag_network
     restart: unless-stopped
 
+  # ----------------------------------------------------------
+  # Redis — caché semántico distribuido
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: rag_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Prometheus — métricas del sistema
+  # ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rag_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Grafana — dashboards de monitorización
+  # ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rag_grafana
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - rag_network
+    restart: unless-stopped
+
 # ----------------------------------------------------------
 # Volúmenes persistentes
 # ----------------------------------------------------------
@@ -97,6 +160,10 @@ volumes:
   chroma_data:
     driver: local
   rag_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 # ----------------------------------------------------------

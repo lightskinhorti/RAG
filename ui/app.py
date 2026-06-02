@@ -574,6 +574,84 @@ def render_ingesta():
 # ---------------------------------------------------------------------------
 
 
+def render_agente(top_k: int, alpha: float, reranking: bool):
+    st.markdown("### 🤖 Agente de Investigación Legal (LangGraph)")
+    st.markdown(
+        "El agente descompone preguntas complejas en sub-consultas, realiza múltiples "
+        "búsquedas y sintetiza una respuesta integrada con referencias cruzadas."
+    )
+
+    if "historial_agente" not in st.session_state:
+        st.session_state.historial_agente = []
+
+    for turno in st.session_state.historial_agente:
+        st.markdown(
+            f'<div class="user-message">👤 {turno["pregunta"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="assistant-message">🤖 {turno["respuesta"]}'
+            f'<br><span class="latency-badge">⏱ {turno["latencia_ms"]} ms · '
+            f'{turno["num_fuentes"]} fuentes</span></div>',
+            unsafe_allow_html=True,
+        )
+        if turno.get("es_compleja"):
+            with st.expander("🔍 Pasos del agente", expanded=False):
+                if turno.get("sub_preguntas"):
+                    st.markdown("**Sub-preguntas generadas:**")
+                    for sq in turno["sub_preguntas"]:
+                        st.markdown(f"- {sq}")
+                st.markdown("**Pasos ejecutados:** " + " → ".join(turno.get("pasos", [])))
+        if turno.get("fuentes"):
+            with st.expander(f"📄 Ver {len(turno['fuentes'])} fuentes", expanded=False):
+                for i, fuente in enumerate(turno["fuentes"], 1):
+                    st.markdown(f"""
+<div class="source-card">
+    <div class="source-title">[Fuente {i}] {fuente['titulo'][:100]}</div>
+    <div class="source-meta">📅 {fuente['fecha']} · Score: {fuente['score']:.3f}</div>
+    <div class="source-text">"{fuente['texto_fragmento'][:300]}..."</div>
+</div>""", unsafe_allow_html=True)
+
+    with st.form("form_agente", clear_on_submit=True):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            pregunta = st.text_input(
+                "Escribe tu pregunta compleja",
+                placeholder="Ej: Compara la regulación de jornada laboral y vacaciones, incluyendo reformas recientes",
+                label_visibility="collapsed",
+            )
+        with col2:
+            enviar = st.form_submit_button("Investigar", use_container_width=True)
+
+    if enviar and pregunta.strip():
+        with st.spinner("🤖 Analizando y ejecutando investigación multi-paso..."):
+            payload = {
+                "pregunta": pregunta.strip(),
+                "top_k": top_k,
+                "alpha": alpha,
+                "reranking": reranking,
+            }
+            resultado = api_call("post", "/agent/query", json=payload)
+
+        if resultado:
+            st.session_state.historial_agente.append({
+                "pregunta": pregunta,
+                "respuesta": resultado.get("respuesta", ""),
+                "fuentes": resultado.get("fuentes", []),
+                "sub_preguntas": resultado.get("sub_preguntas", []),
+                "pasos": resultado.get("pasos", []),
+                "es_compleja": resultado.get("es_compleja", False),
+                "latencia_ms": resultado.get("latencia_ms", 0),
+                "num_fuentes": resultado.get("num_fuentes", 0),
+            })
+            st.rerun()
+
+    if st.session_state.historial_agente:
+        if st.button("🗑️ Limpiar historial agente"):
+            st.session_state.historial_agente = []
+            st.rerun()
+
+
 def main():
     top_k, alpha, reranking = render_sidebar()
 
@@ -589,10 +667,15 @@ def main():
     )
     st.divider()
 
-    tab_chat, tab_eval, tab_ingesta = st.tabs(["💬 Chat", "📊 Evaluación", "📥 Ingesta"])
+    tab_chat, tab_agente, tab_eval, tab_ingesta = st.tabs(
+        ["💬 Chat", "🤖 Agente Legal", "📊 Evaluación", "📥 Ingesta"]
+    )
 
     with tab_chat:
         render_chat(top_k, alpha, reranking)
+
+    with tab_agente:
+        render_agente(top_k, alpha, reranking)
 
     with tab_eval:
         render_evaluacion()

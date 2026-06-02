@@ -34,6 +34,11 @@ class ResultadoEvaluacion:
     precision_contexto: float
     recall_contexto: float
     score_global: float = field(init=False)
+    llm_fidelidad: float | None = None
+    llm_relevancia: float | None = None
+    llm_precision_contexto: float | None = None
+    llm_recall_contexto: float | None = None
+    llm_score_global: float | None = None
 
     def __post_init__(self) -> None:
         self.score_global = round(
@@ -46,9 +51,20 @@ class ResultadoEvaluacion:
             / 4,
             4,
         )
+        if self.llm_fidelidad is not None:
+            self.llm_score_global = round(
+                (
+                    (self.llm_fidelidad or 0.0)
+                    + (self.llm_relevancia or 0.0)
+                    + (self.llm_precision_contexto or 0.0)
+                    + (self.llm_recall_contexto or 0.0)
+                )
+                / 4,
+                4,
+            )
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "id": self.id,
             "pregunta": self.pregunta,
             "respuesta_generada": self.respuesta_generada[:300],
@@ -61,6 +77,15 @@ class ResultadoEvaluacion:
                 "score_global": self.score_global,
             },
         }
+        if self.llm_fidelidad is not None:
+            d["metricas_llm"] = {
+                "fidelidad": self.llm_fidelidad,
+                "relevancia": self.llm_relevancia,
+                "precision_contexto": self.llm_precision_contexto,
+                "recall_contexto": self.llm_recall_contexto,
+                "score_global": self.llm_score_global,
+            }
+        return d
 
 
 @dataclass
@@ -90,8 +115,47 @@ class InformeEvaluacion:
     def score_global_medio(self) -> float:
         return _media([r.score_global for r in self.resultados])
 
+    @property
+    def _has_llm_metrics(self) -> bool:
+        return any(r.llm_fidelidad is not None for r in self.resultados)
+
+    @property
+    def llm_fidelidad_media(self) -> float:
+        vals = [r.llm_fidelidad for r in self.resultados if r.llm_fidelidad is not None]
+        return _media(vals)
+
+    @property
+    def llm_relevancia_media(self) -> float:
+        vals = [r.llm_relevancia for r in self.resultados if r.llm_relevancia is not None]
+        return _media(vals)
+
+    @property
+    def llm_precision_media(self) -> float:
+        vals = [
+            r.llm_precision_contexto
+            for r in self.resultados
+            if r.llm_precision_contexto is not None
+        ]
+        return _media(vals)
+
+    @property
+    def llm_recall_media(self) -> float:
+        vals = [
+            r.llm_recall_contexto
+            for r in self.resultados
+            if r.llm_recall_contexto is not None
+        ]
+        return _media(vals)
+
+    @property
+    def llm_score_global_medio(self) -> float:
+        vals = [
+            r.llm_score_global for r in self.resultados if r.llm_score_global is not None
+        ]
+        return _media(vals)
+
     def to_dict(self) -> dict:
-        return {
+        d = {
             "timestamp": self.timestamp,
             "num_preguntas": len(self.resultados),
             "metricas_globales": {
@@ -103,6 +167,15 @@ class InformeEvaluacion:
             },
             "resultados_detalle": [r.to_dict() for r in self.resultados],
         }
+        if self._has_llm_metrics:
+            d["metricas_globales_llm"] = {
+                "fidelidad_media": round(self.llm_fidelidad_media, 4),
+                "relevancia_media": round(self.llm_relevancia_media, 4),
+                "precision_contexto_media": round(self.llm_precision_media, 4),
+                "recall_contexto_media": round(self.llm_recall_media, 4),
+                "score_global_medio": round(self.llm_score_global_medio, 4),
+            }
+        return d
 
     def guardar(self, path: Path) -> None:
         """Persiste el informe en formato JSON."""
@@ -230,16 +303,24 @@ def evaluar_recall_contexto(respuesta_esperada: str, contexto: list[dict]) -> fl
 class EvaluadorRAG:
     """Orquesta la evaluación completa del sistema RAG."""
 
-    def __init__(self, rag_pipeline=None):
+    def __init__(self, rag_pipeline=None, use_llm_judge: bool = False):
         """
         Args:
             rag_pipeline: Función callable(pregunta) → (respuesta, contexto).
                           Si es None, se usan respuestas y contextos pasados directamente.
+            use_llm_judge: Si True, calcula también métricas LLM (RAGAS-style).
         """
         self._pipeline = rag_pipeline
+        self._use_llm_judge = use_llm_judge
+        self._llm_judge = None
         cfg = get_section("evaluation")
         self._dataset_path = Path(cfg.get("dataset_path", "data/evaluation/eval_dataset.json"))
         self._output_path = Path(cfg.get("output_path", "data/evaluation/results.json"))
+
+        if self._use_llm_judge:
+            from src.evaluation.llm_metrics import LLMJudge
+
+            self._llm_judge = LLMJudge()
 
     def evaluar_muestra(
         self,
@@ -250,6 +331,23 @@ class EvaluadorRAG:
         sample_id: str = "q_manual",
     ) -> ResultadoEvaluacion:
         """Evalúa una muestra individual."""
+        llm_kwargs: dict = {}
+        if self._use_llm_judge and self._llm_judge is not None:
+            llm_kwargs = {
+                "llm_fidelidad": self._llm_judge.evaluar_fidelidad(
+                    respuesta_generada, contexto
+                ),
+                "llm_relevancia": self._llm_judge.evaluar_relevancia(
+                    pregunta, respuesta_generada
+                ),
+                "llm_precision_contexto": self._llm_judge.evaluar_precision_contexto(
+                    pregunta, contexto
+                ),
+                "llm_recall_contexto": self._llm_judge.evaluar_recall_contexto(
+                    respuesta_esperada, contexto
+                ),
+            }
+
         return ResultadoEvaluacion(
             id=sample_id,
             pregunta=pregunta,
@@ -259,6 +357,7 @@ class EvaluadorRAG:
             relevancia_respuesta=evaluar_relevancia_respuesta(pregunta, respuesta_generada),
             precision_contexto=evaluar_precision_contexto(pregunta, contexto),
             recall_contexto=evaluar_recall_contexto(respuesta_esperada, contexto),
+            **llm_kwargs,
         )
 
     def evaluar_dataset(

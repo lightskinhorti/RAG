@@ -110,6 +110,14 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 app.include_router(router, prefix="", tags=["RAG"])
 
+# ---------------------------------------------------------------------------
+# Prometheus metrics
+# ---------------------------------------------------------------------------
+
+from src.api.metrics import setup_metrics  # noqa: E402
+
+setup_metrics(app)
+
 
 @app.on_event("startup")
 async def startup_event():

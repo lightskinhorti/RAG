@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import time
-from collections import OrderedDict
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
+from src.api.metrics import (
+    RAG_CACHE_SIZE,
+    RAG_COLLECTION_SIZE,
+    RAG_INGESTION_CHUNKS_TOTAL,
+    RAG_INGESTION_DURATION_SECONDS,
+    RAG_QUERY_LATENCY_SECONDS,
+    RAG_QUERY_TOTAL,
+)
 from src.api.models import (
     FuenteDocumento,
     HealthResponse,
@@ -20,6 +26,7 @@ from src.api.models import (
     QueryResponse,
     StatsResponse,
 )
+from src.cache.redis_cache import SemanticCache
 from src.config import get_section
 from src.embeddings.embedder import get_embedder
 from src.evaluation.metrics import EvaluadorRAG
@@ -34,29 +41,10 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# Caché LRU de consultas recientes
+# Caché semántico (Redis + fallback in-memory)
 # ---------------------------------------------------------------------------
 
-_CACHE_MAX_SIZE = 128
-_query_cache: OrderedDict[str, dict] = OrderedDict()
-
-
-def _cache_key(pregunta: str, top_k: int, alpha: float, reranking: bool) -> str:
-    raw = f"{pregunta.strip().lower()}|{top_k}|{alpha:.2f}|{reranking}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
-
-
-def _cache_get(key: str) -> dict | None:
-    if key in _query_cache:
-        _query_cache.move_to_end(key)
-        return _query_cache[key]
-    return None
-
-
-def _cache_put(key: str, value: dict) -> None:
-    _query_cache[key] = value
-    if len(_query_cache) > _CACHE_MAX_SIZE:
-        _query_cache.popitem(last=False)
+_semantic_cache: SemanticCache | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +56,30 @@ _vector_store = None
 _searcher = None
 _generador = None
 _reranker = None
+
+
+def _get_semantic_cache() -> SemanticCache:
+    """Return the shared :class:`SemanticCache` instance (lazy init)."""
+    global _semantic_cache
+    if _semantic_cache is None:
+        # Read optional cache config from default.yaml
+        try:
+            cache_cfg = get_section("cache")
+        except KeyError:
+            cache_cfg = {}
+
+        # The embedder may already be initialised by _get_components; if not
+        # we fetch it here so the cache can do semantic lookups.
+        embedder = _embedder or get_embedder()
+
+        _semantic_cache = SemanticCache(
+            embedder=embedder,
+            redis_url=cache_cfg.get("redis_url") or None,
+            ttl=int(cache_cfg.get("ttl", 3600)),
+            max_memory_entries=int(cache_cfg.get("max_entries", 128)),
+            similarity_threshold=float(cache_cfg.get("similarity_threshold", 0.95)),
+        )
+    return _semantic_cache
 
 
 def _get_components():
@@ -89,6 +101,9 @@ def _get_components():
                 _reranker = CrossEncoderReranker()
             except Exception as e:
                 logger.warning("reranker_no_disponible", error=str(e))
+
+    # Ensure the semantic cache is ready (uses the embedder)
+    _get_semantic_cache()
 
     return _embedder, _vector_store, _searcher, _generador, _reranker
 
@@ -121,15 +136,20 @@ async def query(request: QueryRequest):
     - Recupera los fragmentos más relevantes del vector store
     - Opcionalmente aplica reranking con cross-encoder
     - Genera respuesta con el LLM citando las fuentes
-    - Usa caché LRU para consultas repetidas
+    - Usa caché semántico (Redis + in-memory) para consultas repetidas
     """
     inicio = time.perf_counter()
 
-    # Comprobar caché
-    ckey = _cache_key(request.pregunta, request.top_k, request.alpha, request.reranking)
-    cached = _cache_get(ckey)
+    # Comprobar caché (exact + semantic)
+    cache = _get_semantic_cache()
+    ckey = SemanticCache.cache_key(request.pregunta, request.top_k, request.alpha, request.reranking)
+    cached = cache.get(ckey, query_text=request.pregunta)
     if cached:
         latencia = (time.perf_counter() - inicio) * 1000
+        latencia_s = latencia / 1000
+        RAG_QUERY_TOTAL.labels(cache_hit="true", reranking=str(request.reranking).lower()).inc()
+        RAG_QUERY_LATENCY_SECONDS.observe(latencia_s)
+        RAG_CACHE_SIZE.set(cache.size)
         logger.info("query_cache_hit", latencia_ms=round(latencia, 1))
         return QueryResponse(**{**cached, "latencia_ms": round(latencia, 1)})
 
@@ -190,7 +210,13 @@ async def query(request: QueryRequest):
     }
 
     # Guardar en caché
-    _cache_put(ckey, response_dict)
+    cache.put(ckey, response_dict, query_text=request.pregunta)
+
+    # Record Prometheus metrics
+    latencia_s = latencia_total / 1000
+    RAG_QUERY_TOTAL.labels(cache_hit="false", reranking=str(request.reranking).lower()).inc()
+    RAG_QUERY_LATENCY_SECONDS.observe(latencia_s)
+    RAG_CACHE_SIZE.set(cache.size)
 
     return QueryResponse(**response_dict)
 
@@ -273,10 +299,14 @@ async def ingest(request: IngestRequest):
     # Invalidar caché y forzar reconstrucción del índice BM25
     global _searcher
     _searcher = None
-    _query_cache.clear()
+    _get_semantic_cache().invalidate()
 
     duracion = time.perf_counter() - inicio
     total_docs = len({c.metadata.get("fuente", "") for c in chunks})
+
+    # Record Prometheus metrics
+    RAG_INGESTION_CHUNKS_TOTAL.inc(len(chunks))
+    RAG_INGESTION_DURATION_SECONDS.observe(duracion)
 
     return IngestResponse(
         total_documentos=total_docs,
@@ -333,7 +363,7 @@ async def ingest_upload(
 
         global _searcher
         _searcher = None
-        _query_cache.clear()
+        _get_semantic_cache().invalidate()
 
     except HTTPException:
         raise
@@ -378,6 +408,9 @@ async def stats():
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Error obteniendo estadísticas: {e}") from e
 
+    # Update Prometheus gauge
+    RAG_COLLECTION_SIZE.set(vs_stats.get("total_chunks", 0))
+
     return StatsResponse(
         total_chunks=vs_stats.get("total_chunks", 0),
         coleccion=vs_stats.get("coleccion", "—"),
@@ -391,8 +424,12 @@ async def stats():
     "/evaluation",
     summary="Ejecutar evaluación del sistema RAG",
 )
-async def run_evaluation():
-    """Ejecuta la evaluación completa del sistema RAG con el dataset de referencia."""
+async def run_evaluation(use_llm: bool = False):
+    """Ejecuta la evaluación completa del sistema RAG.
+
+    - `use_llm=false` (por defecto): métricas léxicas rápidas, sin consumo de API.
+    - `use_llm=true`: métricas LLM-judge estilo RAGAS (requiere ANTHROPIC_API_KEY).
+    """
     try:
         embedder, vector_store, searcher, generador, reranker = _get_components()
     except Exception as e:
@@ -405,7 +442,46 @@ async def run_evaluation():
         gen = generador.generar(pregunta, resultados)
         return {"respuesta": gen["respuesta"], "contexto": resultados}
 
-    evaluador = EvaluadorRAG(rag_pipeline=pipeline)
+    evaluador = EvaluadorRAG(rag_pipeline=pipeline, use_llm_judge=use_llm)
     informe = await asyncio.to_thread(evaluador.evaluar_dataset)
 
     return informe.to_dict()
+
+
+@router.post(
+    "/agent/query",
+    summary="Agente de investigación legal multi-paso (LangGraph)",
+)
+async def agent_query(request: QueryRequest):
+    """Agente legal que descompone preguntas complejas en sub-consultas,
+    ejecuta múltiples búsquedas y sintetiza una respuesta unificada con
+    referencias cruzadas entre documentos."""
+    try:
+        embedder, vector_store, searcher, generador, reranker = _get_components()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    if vector_store.count() == 0:
+        raise HTTPException(status_code=404, detail="No hay documentos indexados.")
+
+    from src.agents.legal_agent import AgentConfig, LegalResearchAgent
+
+    config = AgentConfig(
+        top_k_per_query=request.top_k,
+        reranking=request.reranking,
+        alpha=request.alpha,
+    )
+    agent = LegalResearchAgent(searcher, reranker, generador, config)
+    resultado = await asyncio.to_thread(agent.run, request.pregunta)
+
+    fuentes = _build_fuentes(resultado.get("fuentes", []))
+    return {
+        "pregunta": resultado["pregunta"],
+        "respuesta": resultado["respuesta"],
+        "fuentes": [f.model_dump() for f in fuentes],
+        "sub_preguntas": resultado.get("sub_preguntas", []),
+        "pasos": resultado.get("pasos", []),
+        "es_compleja": resultado.get("es_compleja", False),
+        "num_fuentes": len(fuentes),
+        "latencia_ms": resultado.get("latencia_ms", 0),
+    }

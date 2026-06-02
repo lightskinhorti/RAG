@@ -47,13 +47,15 @@ Evaluado sobre **50 preguntas** de legislación española (derecho laboral, prot
 | **LLM** | Anthropic Claude con modo mock para demos sin API key |
 | **Chunking** | 3 estrategias: fixed, recursive, semantic — configurables por YAML |
 | **Filtrado** | Metadata filtering por sección, departamento y fecha del BOE |
-| **Caché** | LRU cache en memoria para consultas repetidas |
-| **Evaluación** | 4 métricas RAG: fidelidad, relevancia, precisión contexto, recall |
+| **Caché** | Redis semantic cache: coincidencia exacta SHA-256 + similitud coseno (threshold 0.95), fallback in-memory |
+| **Evaluación** | 4 métricas léxicas + RAGAS-style LLM judge (fidelidad, relevancia, precisión, recall) |
+| **Agente Legal** | LangGraph StateGraph multi-step: analizar → descomponer → recuperar → sintetizar |
+| **Vector Store cloud** | Pinecone drop-in via `VectorStore` ABC (mismo contrato que ChromaDB) |
 | **API** | FastAPI async con `asyncio.to_thread()`, streaming SSE, Pydantic v2 |
-| **Observabilidad** | structlog con request_id, latencia por request, logs correlacionados |
-| **UI** | Streamlit con diseño personalizado, chat con citas expandibles |
+| **Observabilidad** | Prometheus `/metrics` + Grafana dashboard (latencia p50/p95/p99, QPS, cache hit rate) |
+| **UI** | Streamlit con diseño personalizado: Chat, Agente Legal, Evaluación, Ingesta |
 | **CI/CD** | GitHub Actions: tests + lint en cada push |
-| **Deploy** | Docker Compose: un comando levanta API + UI + ChromaDB |
+| **Deploy** | Docker Compose: un comando levanta API + UI + ChromaDB + Redis + Prometheus + Grafana |
 
 ---
 
@@ -94,10 +96,14 @@ graph TD
     DL --> PARSE[XML Parser + Metadata]
     PARSE --> CHUNK[Chunker<br/>fixed / recursive / semantic]
     CHUNK --> EMB["Embeddings<br/>MiniLM-L12-v2 multilingual"]
-    EMB --> DB[(ChromaDB)]
+    EMB --> DB[(ChromaDB / Pinecone)]
 
-    Q["👤 Pregunta"] --> FILT{Metadata<br/>Filter?}
-    FILT --> QEMB[Query Embedding]
+    Q["👤 Pregunta"] --> CACHE{Redis Semantic<br/>Cache?}
+    CACHE -- miss --> AGENT{Agente<br/>Legal?}
+    CACHE -- hit --> ANS
+    AGENT -- simple --> QEMB[Query Embedding]
+    AGENT -- compleja --> DECOMP[LangGraph:<br/>descomponer → multi-recuperar]
+    DECOMP --> QEMB
     QEMB --> DENSE[Dense Search]
     QEMB --> BM25[BM25 Sparse]
     DENSE & BM25 --> RRF[Reciprocal Rank Fusion]
@@ -107,9 +113,11 @@ graph TD
     DB --> DENSE
     LLM --> ANS["✅ Respuesta + Fuentes citadas"]
 
-    CACHE["LRU Cache"] -.-> Q
-    API["FastAPI async<br/>/query /ingest /stats"] --> Q
-    UI["Streamlit UI<br/>Chat + Evaluación"] --> API
+    ANS --> CACHE_STORE[Guardar en Redis]
+    API["FastAPI async<br/>/query /ingest /agent/query /metrics"] --> Q
+    UI["Streamlit UI<br/>Chat · Agente · Evaluación · Ingesta"] --> API
+    PROM["Prometheus /metrics"] --> GRAF[Grafana Dashboard]
+    API --> PROM
 ```
 
 ---
@@ -128,17 +136,24 @@ rag-document-intelligence/
 │   │   └── embedder.py         # sentence-transformers multilingüe
 │   ├── retrieval/
 │   │   ├── vector_store.py     # Abstracción ChromaDB + metadata filtering
+│   │   ├── pinecone_store.py   # Implementación Pinecone (cloud, drop-in)
 │   │   ├── hybrid_search.py    # Dense + BM25 con RRF
 │   │   └── reranker.py         # Cross-encoder reranking
 │   ├── generation/
 │   │   ├── prompts.py          # Templates de prompt en español
 │   │   └── llm.py              # Anthropic Claude + modo mock
 │   ├── evaluation/
-│   │   └── metrics.py          # 4 métricas RAG + informe JSON
+│   │   ├── metrics.py          # 4 métricas léxicas RAG + informe JSON
+│   │   └── llm_metrics.py      # RAGAS-style LLM judge con Claude
+│   ├── cache/
+│   │   └── redis_cache.py      # Semantic cache: Redis + similitud coseno
+│   ├── agents/
+│   │   └── legal_agent.py      # LangGraph multi-step legal research agent
 │   ├── api/
 │   │   ├── main.py             # FastAPI: middleware, request_id, warm-up
+│   │   ├── metrics.py          # Prometheus metrics + /metrics endpoint
 │   │   ├── models.py           # Pydantic v2 models
-│   │   └── routes/             # Endpoints async: /query /ingest /health /stats
+│   │   └── routes/             # Endpoints: /query /ingest /agent/query /health /stats /metrics
 │   ├── config.py               # Carga YAML + env vars
 │   └── logger.py               # structlog con request_id
 ├── ui/
@@ -158,7 +173,12 @@ rag-document-intelligence/
 ├── docker/
 │   ├── Dockerfile.api          # Multi-stage build para la API
 │   ├── Dockerfile.ui           # Imagen para Streamlit
-│   └── docker-compose.yml      # Orquestación completa
+│   ├── docker-compose.yml      # Orquestación completa (6 servicios)
+│   ├── prometheus/
+│   │   └── prometheus.yml      # Configuración de scraping
+│   └── grafana/
+│       ├── provisioning/       # Auto-provisión datasource + dashboards
+│       └── dashboards/         # Dashboard RAG Overview (7 paneles)
 ├── scripts/
 │   └── download_boe.py         # CLI de descarga e ingesta
 ├── docs/
@@ -177,13 +197,15 @@ rag-document-intelligence/
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `POST` | `/query` | Consulta RAG → respuesta + fuentes (con caché y filtros) |
+| `POST` | `/query` | Consulta RAG → respuesta + fuentes (con caché semántico y filtros) |
 | `POST` | `/query/stream` | Igual con streaming SSE |
+| `POST` | `/agent/query` | Agente legal multi-step (LangGraph): descompone preguntas complejas |
 | `POST` | `/ingest` | Indexar documentos desde directorio |
 | `POST` | `/ingest/upload` | Subir y procesar un fichero |
 | `GET` | `/health` | Estado del servicio |
 | `GET` | `/stats` | Estadísticas de la colección |
-| `GET` | `/evaluation` | Ejecutar evaluación completa |
+| `GET` | `/evaluation` | Evaluación léxica; `?use_llm=true` activa LLM judge |
+| `GET` | `/metrics` | Métricas Prometheus (scrapeadas por Grafana) |
 
 **Ejemplo de consulta con filtrado por metadata:**
 
@@ -201,21 +223,32 @@ curl -X POST http://localhost:8000/query \
 
 Todas las requests incluyen un header `X-Request-ID` para trazabilidad y `X-Process-Time-Ms` con la latencia.
 
+**Agente legal para preguntas complejas:**
+
+```bash
+curl -X POST http://localhost:8000/agent/query \
+  -H "Content-Type: application/json" \
+  -d '{"pregunta": "¿Cómo se regula la jornada laboral en trabajadores a tiempo parcial y cuáles son las diferencias con el contrato indefinido ordinario?"}'
+```
+
+La respuesta incluye `sub_preguntas`, `pasos` del agente, `es_compleja` y `latencia_ms`.
+
 ---
 
 ## 📊 Evaluación del Sistema
 
 El framework evalúa el pipeline completo con **50 preguntas** de referencia sobre legislación española, cubriendo 5 dominios jurídicos.
 
-| Métrica | Descripción | Estrategia |
-|---------|-------------|-----------|
-| **Fidelidad** | ¿La respuesta está en el contexto? | Solapamiento semántico respuesta ↔ contexto |
-| **Relevancia** | ¿Responde la pregunta? | Solapamiento semántico pregunta ↔ respuesta |
-| **Precisión** | ¿Los chunks son relevantes? | % chunks con términos de la pregunta |
-| **Recall** | ¿Se recuperó info suficiente? | Solapamiento respuesta esperada ↔ contexto |
+| Métrica | Modo léxico | Modo LLM judge |
+|---------|-------------|---------------|
+| **Fidelidad** | Solapamiento semántico respuesta ↔ contexto | Claude evalúa si cada claim tiene soporte en el contexto |
+| **Relevancia** | Solapamiento semántico pregunta ↔ respuesta | Claude evalúa si la respuesta aborda la pregunta |
+| **Precisión** | % chunks con términos de la pregunta | Claude evalúa relevancia de cada chunk recuperado |
+| **Recall** | Solapamiento respuesta esperada ↔ contexto | Claude evalúa cobertura de la respuesta esperada |
 
 ```bash
-make eval    # Ejecuta evaluación contra el dataset de 50 preguntas
+make eval                          # Evaluación léxica (rápida, sin API key)
+GET /evaluation?use_llm=true       # LLM judge (requiere ANTHROPIC_API_KEY)
 ```
 
 ---
@@ -247,7 +280,20 @@ Variables de entorno (`.env`):
 ```env
 ANTHROPIC_API_KEY=sk-ant-...   # Para respuestas reales del LLM
 MOCK_LLM=false                 # true para demos sin API
+REDIS_URL=redis://localhost:6379/0  # Opcional: activa caché distribuido
+PINECONE_API_KEY=...           # Opcional: activa vector store cloud
 ```
+
+**Servicios Docker y puertos:**
+
+| Servicio | Puerto | URL |
+|----------|--------|-----|
+| API FastAPI | 8000 | http://localhost:8000/docs |
+| UI Streamlit | 8501 | http://localhost:8501 |
+| ChromaDB | 8001 | http://localhost:8001 |
+| Redis | 6379 | — |
+| Prometheus | 9090 | http://localhost:9090 |
+| Grafana | 3000 | http://localhost:3000 (admin/admin) |
 
 ---
 
@@ -279,14 +325,12 @@ make health               # Health check del servidor
 
 ---
 
-## 🔮 Mejoras Futuras
+## 🔮 Posibles Extensiones
 
-- [ ] Evaluación con RAGAS (LLM judge) para métricas de mayor fidelidad semántica
-- [ ] Integración con Pinecone para escala cloud
-- [ ] Fine-tuning del embedder sobre corpus jurídico español
-- [ ] Caché semántico distribuido con Redis
-- [ ] Monitorización con Prometheus + Grafana
-- [ ] Agentes multi-step para consultas legales complejas (LangGraph)
+- Fine-tuning del embedder sobre corpus jurídico español (requiere GPU y dataset etiquetado)
+- Interfaz web React/Next.js con autenticación para despliegue multi-usuario
+- Ingesta incremental automática (cron job descargando BOE diariamente)
+- Soporte para otros idiomas y jurisdicciones (DOUE, legislación autonómica)
 
 ---
 

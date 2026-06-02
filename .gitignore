@@ -10,11 +10,14 @@
 *.key
 
 # --- Datos generados localmente ---
-data/raw/
-data/processed/
+data/raw/*
+data/processed/*
 data/chroma_db/
 data/embeddings_cache/
 data/evaluation/results.json
+# Mantener los marcadores de directorio vacío
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 
 # --- Modelos descargados ---
 models/

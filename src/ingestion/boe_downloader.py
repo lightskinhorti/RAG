@@ -109,14 +109,18 @@ class BOEDownloader:
 
         docs = []
         for doc_id, meta in ids_documentos:
+            # Caché de XML en bruto para reproducibilidad y evitar re-requests
             cached = self._raw_dir / f"{doc_id}.xml"
             if cached.exists():
                 logger.debug("usando_cache", id=doc_id)
                 doc = self._parsear_xml_file(cached, meta)
             else:
-                doc = self._descargar_documento(doc_id, meta)
-                if doc and cached.parent.exists():
-                    cached.write_text(doc.texto, encoding="utf-8")
+                raw_bytes = self._descargar_xml_bytes(doc_id)
+                if raw_bytes:
+                    cached.write_bytes(raw_bytes)  # guardamos XML en bruto, no texto
+                    doc = self._parsear_xml_content(raw_bytes, meta)
+                else:
+                    doc = None
 
             if doc:
                 docs.append(doc)
@@ -195,13 +199,13 @@ class BOEDownloader:
         titulo_lower = titulo.lower()
         return any(t.lower() in titulo_lower for t in _TIPOS_INTERES)
 
-    def _descargar_documento(self, doc_id: str, meta: dict) -> DocumentoBOE | None:
-        """Descarga y parsea el XML de un documento individual del BOE."""
+    def _descargar_xml_bytes(self, doc_id: str) -> bytes | None:
+        """Descarga el XML en bruto de un documento del BOE. Retorna bytes o None."""
         url = f"{_XML_DOC_URL}?id={doc_id}"
         try:
             resp = self._session.get(url, timeout=20)
             resp.raise_for_status()
-            return self._parsear_xml_content(resp.content, meta)
+            return resp.content
         except requests.RequestException as e:
             logger.warning("error_descargando_doc", id=doc_id, error=str(e))
             return None

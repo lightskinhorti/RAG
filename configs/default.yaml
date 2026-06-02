@@ -65,3 +65,12 @@ ui:
   max_historial: 10
   top_k_defecto: 5
   hybrid_alpha_defecto: 0.7
+
+boe:
+  directorio_raw: "data/raw"
+  max_docs_por_dia: 15
+  delay_entre_requests: 0.5
+  secciones_interes:
+    - "1"   # I. Disposiciones generales
+    - "2"   # II. Autoridades y personal
+    - "3"   # III. Otras disposiciones

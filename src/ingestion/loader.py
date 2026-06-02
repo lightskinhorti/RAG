@@ -53,10 +53,53 @@ def load_pdf(path: Path) -> Document:
     )
 
 
+def load_xml(path: Path) -> Document:
+    """Carga un documento XML del BOE extrayendo texto limpio."""
+    from lxml import etree
+
+    try:
+        root = etree.parse(str(path)).getroot()
+    except etree.XMLSyntaxError:
+        # Fallback: leer como texto plano eliminando etiquetas
+        import re
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        text = re.sub(r"<[^>]+>", " ", raw)
+        text = re.sub(r"\s{2,}", " ", text).strip()
+        return Document(
+            contenido=text,
+            metadata={"fuente": path.name, "formato": "xml", "ruta": str(path)},
+        )
+
+    # Extraer metadatos del XML del BOE
+    def _xt(xpath: str) -> str:
+        nodo = root.find(xpath)
+        return (nodo.text or "").strip() if nodo is not None else ""
+
+    partes = []
+    for nodo in root.findall(".//*"):
+        texto = (nodo.text or "").strip()
+        if texto:
+            partes.append(texto)
+
+    return Document(
+        contenido="\n".join(partes),
+        metadata={
+            "fuente": path.name,
+            "formato": "xml",
+            "ruta": str(path),
+            "titulo": _xt(".//titulo") or _xt(".//title"),
+            "fecha": _xt(".//fecha_publicacion") or _xt(".//fecha"),
+            "departamento": _xt(".//departamento"),
+            "seccion": _xt(".//seccion"),
+        },
+    )
+
+
 _LOADERS = {
     ".txt": load_txt,
     ".md": load_markdown,
     ".pdf": load_pdf,
+    ".xml": load_xml,
 }
 
 

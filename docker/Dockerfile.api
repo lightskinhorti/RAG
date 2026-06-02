@@ -1,0 +1,50 @@
+# ============================================================
+# Dockerfile multi-etapa para la API FastAPI del sistema RAG
+# ============================================================
+
+# --- Etapa 1: dependencias ---
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias para compilar paquetes
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# --- Etapa 2: imagen final ---
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# Copiar dependencias instaladas de la etapa anterior
+COPY --from=builder /root/.local /root/.local
+
+# Asegurar que los scripts de usuario estén en el PATH
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Copiar código fuente
+COPY src/ ./src/
+COPY configs/ ./configs/
+COPY scripts/ ./scripts/
+
+# Crear directorios necesarios
+RUN mkdir -p data/raw data/processed data/chroma_db data/evaluation
+
+# Usuario no-root para producción
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

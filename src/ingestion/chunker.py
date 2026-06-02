@@ -22,6 +22,8 @@ def fixed_chunking(
     metadata: dict | None = None,
 ) -> list[Chunk]:
     meta = metadata or {}
+    overlap = min(chunk_overlap, chunk_size - 1) if chunk_size > 1 else 0
+    step = max(chunk_size - overlap, 1)
     chunks = []
     start = 0
     idx = 0
@@ -34,7 +36,7 @@ def fixed_chunking(
                 metadata={**meta, "chunk_index": idx, "estrategia": "fixed"},
             ))
             idx += 1
-        start += chunk_size - chunk_overlap
+        start += step
     return chunks
 
 

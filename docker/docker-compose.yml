@@ -162,6 +162,8 @@ volumes:
     driver: local
   rag_data:
     driver: local
+  redis_data:
+    driver: local
   prometheus_data:
     driver: local
   grafana_data:

@@ -157,13 +157,22 @@ class BOEDownloader:
             return None
 
     def _extraer_ids_relevantes(self, indice: etree._Element) -> Iterator[tuple[str, dict]]:
-        """Extrae los IDs de documentos legislativos del XML de sumario del BOE."""
+        """Extrae los IDs de documentos legislativos del XML de sumario del BOE.
+
+        Estructura real de la API:
+        <response><data><sumario><diario>
+          <seccion codigo="1" nombre="I. Disposiciones generales">
+            <departamento nombre="JEFATURA DEL ESTADO">
+              <epigrafe nombre="...">
+                <item>
+                  <identificador>BOE-A-2025-442</identificador>
+                  <titulo>Real Decreto...</titulo>
+                  <url_pdf>https://...</url_pdf>
+        """
         try:
-            # El sumario XML tiene estructura:
-            # <sumario><diario><seccion num="1"><departamento><epigrafe><item id="BOE-A-..." titulo="..."/>
             for seccion in indice.findall(".//seccion"):
-                num = seccion.get("num", "")
-                if num not in _SECCIONES_INTERES:
+                codigo = seccion.get("codigo", "")
+                if codigo not in _SECCIONES_INTERES:
                     continue
                 nombre_seccion = seccion.get("nombre", "")
 
@@ -171,9 +180,13 @@ class BOEDownloader:
                     nombre_dept = dept.get("nombre", "")
 
                     for item in dept.findall(".//item"):
-                        doc_id = item.get("id", "")
-                        titulo = item.get("titulo", "")
-                        url_pdf = item.get("urlPdf", "")
+                        id_elem = item.find("identificador")
+                        tit_elem = item.find("titulo")
+                        pdf_elem = item.find("url_pdf")
+
+                        doc_id = id_elem.text.strip() if id_elem is not None and id_elem.text else ""
+                        titulo = tit_elem.text.strip() if tit_elem is not None and tit_elem.text else ""
+                        url_pdf = pdf_elem.text.strip() if pdf_elem is not None and pdf_elem.text else ""
 
                         if doc_id and self._es_documento_interes(titulo):
                             yield doc_id, {
@@ -181,7 +194,7 @@ class BOEDownloader:
                                 "titulo": titulo,
                                 "seccion": nombre_seccion,
                                 "departamento": nombre_dept,
-                                "url": f"{_BASE_URL}{url_pdf}" if url_pdf.startswith("/") else url_pdf,
+                                "url": url_pdf,
                             }
         except (AttributeError, TypeError) as e:
             logger.warning("error_parseando_indice", error=str(e))

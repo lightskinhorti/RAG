@@ -209,8 +209,9 @@ async def query(request: QueryRequest):
         "modo_mock": respuesta_data["modo_mock"],
     }
 
-    # Guardar en caché
-    cache.put(ckey, response_dict, query_text=request.pregunta)
+    # Guardar en caché — fuentes como dicts para que JSON las serialice bien
+    cacheable = {**response_dict, "fuentes": [f.model_dump() for f in fuentes]}
+    cache.put(ckey, cacheable, query_text=request.pregunta)
 
     # Record Prometheus metrics
     latencia_s = latencia_total / 1000

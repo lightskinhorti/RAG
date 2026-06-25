@@ -7,7 +7,6 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para compilar paquetes
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -20,29 +19,31 @@ FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
-# Copiar dependencias instaladas de la etapa anterior
 COPY --from=builder /install /usr/local
 
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# Redirigir caché de HuggingFace/sentence-transformers a directorio escribible
+ENV HF_HOME=/app/data/model_cache
+ENV TRANSFORMERS_CACHE=/app/data/model_cache
+ENV SENTENCE_TRANSFORMERS_HOME=/app/data/model_cache
 
-# Copiar código fuente
 COPY src/ ./src/
 COPY configs/ ./configs/
 COPY scripts/ ./scripts/
 
-# Crear directorios necesarios
-RUN mkdir -p data/raw data/processed data/chroma_db data/evaluation
+# Crear directorios necesarios incluyendo caché de modelos
+RUN mkdir -p data/raw data/processed data/chroma_db data/evaluation data/model_cache
 
-# Usuario no-root para producción
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Usuario no-root — con home explícito para evitar errores de permisos
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=20s --timeout=15s --start-period=120s --retries=10 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

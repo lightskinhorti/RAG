@@ -20,12 +20,6 @@ services:
       - ANONYMIZED_TELEMETRY=FALSE
     ports:
       - "8001:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import socket; socket.create_connection(('localhost', 8000), timeout=5)\" || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 8
-      start_period: 60s
     networks:
       - rag_network
 
@@ -39,7 +33,7 @@ services:
     container_name: rag_api
     depends_on:
       chromadb:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_healthy
     environment:

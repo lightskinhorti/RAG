@@ -18,6 +18,7 @@ rank-bm25>=0.2.2
 # --- Procesamiento de documentos ---
 pypdf>=5.0.0
 python-multipart>=0.0.12
+lxml>=5.0.0
 
 # --- API ---
 fastapi>=0.115.0

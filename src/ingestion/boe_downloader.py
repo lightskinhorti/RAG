@@ -2,6 +2,9 @@
 
 Utiliza la API de datos abiertos del BOE (sin autenticación) para obtener
 índices diarios y descargar los documentos XML de legislación española.
+
+Endpoint de sumario: GET /datosabiertos/api/boe/sumario/{YYYYMMDD}
+                     Accept: application/xml
 """
 
 from __future__ import annotations
@@ -22,20 +25,20 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 _BASE_URL = "https://www.boe.es"
-_API_BASE = "https://www.boe.es/datosabiertos/api"
+_API_SUMARIO = "https://www.boe.es/datosabiertos/api/boe/sumario"
 _XML_DOC_URL = "https://www.boe.es/diario_boe/xml.php"
 
 _SECCIONES_INTERES = {"1", "2", "3"}  # I, II, III — disposiciones normativas
 
 _TIPOS_INTERES = {
-    "Ley Orgánica",
-    "Ley",
-    "Real Decreto-ley",
-    "Real Decreto",
-    "Orden",
-    "Resolución",
-    "Instrucción",
-    "Circular",
+    "ley orgánica",
+    "ley",
+    "real decreto-ley",
+    "real decreto",
+    "orden",
+    "resolución",
+    "instrucción",
+    "circular",
 }
 
 
@@ -68,7 +71,10 @@ class BOEDownloader:
         self._max_docs = max_docs_per_day
         self._delay = delay_between_requests
         self._session = requests.Session()
-        self._session.headers.update({"User-Agent": "RAG-BOE-Research/1.0"})
+        self._session.headers.update({
+            "User-Agent": "RAG-BOE-Research/1.0",
+            "Accept": "application/xml",
+        })
 
     def descargar_rango(
         self,
@@ -97,7 +103,7 @@ class BOEDownloader:
     def descargar_dia(self, fecha: date) -> list[DocumentoBOE]:
         """Descarga todos los documentos relevantes de un día del BOE."""
         indice = self._obtener_indice(fecha)
-        if not indice:
+        if indice is None:
             return []
 
         ids_documentos = list(self._extraer_ids_relevantes(indice))[:self._max_docs]
@@ -109,7 +115,6 @@ class BOEDownloader:
 
         docs = []
         for doc_id, meta in ids_documentos:
-            # Caché de XML en bruto para reproducibilidad y evitar re-requests
             cached = self._raw_dir / f"{doc_id}.xml"
             if cached.exists():
                 logger.debug("usando_cache", id=doc_id)
@@ -117,7 +122,7 @@ class BOEDownloader:
             else:
                 raw_bytes = self._descargar_xml_bytes(doc_id)
                 if raw_bytes:
-                    cached.write_bytes(raw_bytes)  # guardamos XML en bruto, no texto
+                    cached.write_bytes(raw_bytes)
                     doc = self._parsear_xml_content(raw_bytes, meta)
                 else:
                     doc = None
@@ -128,76 +133,63 @@ class BOEDownloader:
 
         return docs
 
-    def _obtener_indice(self, fecha: date) -> dict | None:
-        """Obtiene el índice diario del BOE en formato JSON."""
-        url = f"{_API_BASE}/boe/dias/{fecha.strftime('%Y%m%d')}"
+    def _obtener_indice(self, fecha: date) -> etree._Element | None:
+        """Obtiene el índice diario del BOE en formato XML via la API de datos abiertos."""
+        url = f"{_API_SUMARIO}/{fecha.strftime('%Y%m%d')}"
         try:
             resp = self._session.get(url, timeout=15)
             resp.raise_for_status()
-            return resp.json()
+            root = etree.fromstring(resp.content)
+            logger.debug("sumario_obtenido", fecha=fecha.isoformat(), url=url)
+            return root
         except requests.HTTPError as e:
-            if e.response is not None and e.response.status_code == 404:
+            code = e.response.status_code if e.response is not None else 0
+            if code == 404:
                 logger.info("dia_sin_boe", fecha=fecha.isoformat())
             else:
-                logger.warning("error_http_indice", fecha=fecha.isoformat(), error=str(e))
+                logger.warning("error_http_indice", fecha=fecha.isoformat(), status=code, error=str(e))
+            return None
+        except etree.XMLSyntaxError as e:
+            logger.warning("error_xml_indice", fecha=fecha.isoformat(), error=str(e))
             return None
         except requests.RequestException as e:
             logger.error("error_red_indice", fecha=fecha.isoformat(), error=str(e))
             return None
 
-    def _extraer_ids_relevantes(self, indice: dict) -> Iterator[tuple[str, dict]]:
-        """Extrae los IDs de documentos legislativos del índice diario."""
+    def _extraer_ids_relevantes(self, indice: etree._Element) -> Iterator[tuple[str, dict]]:
+        """Extrae los IDs de documentos legislativos del XML de sumario del BOE."""
         try:
-            data = indice.get("data", {})
-            sumario = data.get("sumario", {})
-            diario = sumario.get("diario", [])
+            # El sumario XML tiene estructura:
+            # <sumario><diario><seccion num="1"><departamento><epigrafe><item id="BOE-A-..." titulo="..."/>
+            for seccion in indice.findall(".//seccion"):
+                num = seccion.get("num", "")
+                if num not in _SECCIONES_INTERES:
+                    continue
+                nombre_seccion = seccion.get("nombre", "")
 
-            if isinstance(diario, dict):
-                diario = [diario]
+                for dept in seccion.findall(".//departamento"):
+                    nombre_dept = dept.get("nombre", "")
 
-            for entrada_diario in diario:
-                secciones = entrada_diario.get("seccion", [])
-                if isinstance(secciones, dict):
-                    secciones = [secciones]
+                    for item in dept.findall(".//item"):
+                        doc_id = item.get("id", "")
+                        titulo = item.get("titulo", "")
+                        url_pdf = item.get("urlPdf", "")
 
-                for seccion in secciones:
-                    codigo = str(seccion.get("codigo", ""))
-                    if codigo not in _SECCIONES_INTERES:
-                        continue
-
-                    departamentos = seccion.get("departamento", [])
-                    if isinstance(departamentos, dict):
-                        departamentos = [departamentos]
-
-                    for dept in departamentos:
-                        nombre_dept = dept.get("nombre", "")
-                        epigrafes = dept.get("epigrafe", [])
-                        if isinstance(epigrafes, dict):
-                            epigrafes = [epigrafes]
-
-                        for epigrafe in epigrafes:
-                            items = epigrafe.get("item", [])
-                            if isinstance(items, dict):
-                                items = [items]
-
-                            for item in items:
-                                doc_id = item.get("id", "")
-                                titulo = item.get("titulo", "")
-                                if doc_id and self._es_documento_interes(titulo):
-                                    yield doc_id, {
-                                        "id": doc_id,
-                                        "titulo": titulo,
-                                        "seccion": seccion.get("nombre", ""),
-                                        "departamento": nombre_dept,
-                                        "url": f"{_BASE_URL}/boe/dias/{item.get('urlPdf', '')}",
-                                    }
-        except (KeyError, TypeError) as e:
+                        if doc_id and self._es_documento_interes(titulo):
+                            yield doc_id, {
+                                "id": doc_id,
+                                "titulo": titulo,
+                                "seccion": nombre_seccion,
+                                "departamento": nombre_dept,
+                                "url": f"{_BASE_URL}{url_pdf}" if url_pdf.startswith("/") else url_pdf,
+                            }
+        except (AttributeError, TypeError) as e:
             logger.warning("error_parseando_indice", error=str(e))
 
     def _es_documento_interes(self, titulo: str) -> bool:
         """Filtra documentos que son leyes, decretos u órdenes relevantes."""
         titulo_lower = titulo.lower()
-        return any(t.lower() in titulo_lower for t in _TIPOS_INTERES)
+        return any(t in titulo_lower for t in _TIPOS_INTERES)
 
     def _descargar_xml_bytes(self, doc_id: str) -> bytes | None:
         """Descarga el XML en bruto de un documento del BOE. Retorna bytes o None."""
@@ -224,7 +216,6 @@ class BOEDownloader:
         try:
             root = etree.fromstring(content)
         except etree.XMLSyntaxError:
-            # Algunos documentos son HTML mal formado; intentar parsear como texto
             texto = _limpiar_html(content.decode("utf-8", errors="replace"))
             if len(texto) < 100:
                 return None
@@ -243,7 +234,6 @@ class BOEDownloader:
         if not texto or len(texto) < 100:
             return None
 
-        # Metadatos enriquecidos desde el propio XML
         titulo = _xpath_texto(root, ".//titulo") or meta.get("titulo", "")
         fecha = _xpath_texto(root, ".//fecha_publicacion") or meta.get("fecha", "")
         departamento = _xpath_texto(root, ".//departamento") or meta.get("departamento", "")
@@ -267,12 +257,7 @@ class BOEDownloader:
                 "longitud_texto": len(texto),
             },
         )
-        logger.debug(
-            "documento_parseado",
-            id=doc_id,
-            longitud=len(texto),
-            titulo=titulo[:60],
-        )
+        logger.debug("documento_parseado", id=doc_id, longitud=len(texto), titulo=titulo[:60])
         return doc
 
 

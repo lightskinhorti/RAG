@@ -20,12 +20,6 @@ services:
       - ANONYMIZED_TELEMETRY=FALSE
     ports:
       - "8001:8000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     networks:
       - rag_network
 
@@ -39,7 +33,7 @@ services:
     container_name: rag_api
     depends_on:
       chromadb:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_healthy
     environment:
@@ -59,10 +53,10 @@ services:
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
+      interval: 20s
       timeout: 15s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
     networks:
       - rag_network
     restart: unless-stopped
@@ -160,6 +154,8 @@ volumes:
   chroma_data:
     driver: local
   rag_data:
+    driver: local
+  redis_data:
     driver: local
   prometheus_data:
     driver: local
